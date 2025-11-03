@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
-import { UserModule } from './user/user.module';
+import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import configuration from './config/configuration';
@@ -15,7 +15,7 @@ import validationSchema from './config/validation';
       load: [configuration],
       validationSchema,
     }),
-    UserModule,
+    UsersModule,
     PrismaModule,
     AuthModule,
   ],

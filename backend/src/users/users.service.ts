@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { UserResponseDto } from './dtos/user-response.dto';
 
 @Injectable()
-export class UserService {
+export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
