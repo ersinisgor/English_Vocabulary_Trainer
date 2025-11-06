@@ -13,17 +13,17 @@ import { UserResponseDto } from './dtos/user-response.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly userService: UsersService) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Get()
   async getAll() {
-    return this.userService.findAll();
+    return this.usersService.findAll();
   }
 
   @Get(':email')
   @Serialize(UserResponseDto)
   async getByEmail(@Param('email') email: string) {
-    const user = await this.userService.findOneByEmail(email);
+    const user = await this.usersService.findOneByEmail(email);
     if (!user)
       throw new NotFoundException(`User with email ${email} not found`);
     return user;
@@ -31,6 +31,6 @@ export class UsersController {
 
   @Post()
   async create(@Body() dto: CreateUserDto) {
-    return this.userService.create(dto);
+    return this.usersService.create(dto);
   }
 }
