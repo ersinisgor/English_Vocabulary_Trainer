@@ -9,14 +9,15 @@ import { JwtPayload } from './types/interfaces/jwt-payload.interface';
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async login(loginDTO: LoginDTO): Promise<LoginResponseDTO> {
     const { password, email } = loginDTO;
 
     const user = await this.usersService.findOneByEmail(email);
+
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
