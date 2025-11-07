@@ -5,13 +5,15 @@ import {
   Body,
   Param,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dtos/create-user.dto';
+// import { CreateUserDto } from './dtos/create-user.dto';
 import { Serialize } from 'src/common/decorators/serilaize.decorator';
 import { UserResponseDto } from './dtos/user-response.dto';
 
 @Controller('users')
+@Serialize(UserResponseDto)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -21,16 +23,21 @@ export class UsersController {
   }
 
   @Get(':email')
-  @Serialize(UserResponseDto)
   async getByEmail(@Param('email') email: string) {
-    const user = await this.usersService.findOneByEmail(email);
+    const user = await this.usersService.findUniqueByEmail(email);
     if (!user)
       throw new NotFoundException(`User with email ${email} not found`);
     return user;
   }
 
   @Post()
-  async create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  // Temporarily disabled until Role Guard is created
+  create() {
+    throw new ForbiddenException(
+      'User creation is disabled. Use /auth/register instead.',
+    );
   }
+  // async create(@Body() dto: CreateUserDto) {
+  //   return this.usersService.create(dto);
+  // }
 }
