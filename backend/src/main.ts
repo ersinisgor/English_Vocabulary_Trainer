@@ -5,10 +5,22 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import cookieParser from 'cookie-parser';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { REFRESH_COOKIE_NAME } from './common/constants/auth.constants';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('English Vocabulary Trainer')
+    .setDescription('API description')
+    .addCookieAuth(REFRESH_COOKIE_NAME)
+    .setVersion('0.1')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
 
   app.use(cookieParser());
   app.useGlobalPipes(
