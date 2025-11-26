@@ -25,6 +25,8 @@ import { LogoutDTO } from './dtos/logout.dto';
 import { RequestWithCookies } from './types/interfaces/auth-request-with-cookies.interface';
 import { buildRefreshCookieOptions } from 'src/common/utils/cookie.utils';
 import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
+import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { LoginDTO } from './dtos/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -36,6 +38,10 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @ApiOperation({ summary: 'Login and receive access token + refresh cookie' })
+  @ApiBody({ type: LoginDTO })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
@@ -55,6 +61,10 @@ export class AuthController {
 
   @Post('register')
   @Serialize(RegisterResponseDTO)
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: RegisterDTO })
+  @ApiResponse({ status: 201, description: 'User created' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(@Body() registerDTO: RegisterDTO) {
     return await this.authService.register(registerDTO);
   }
@@ -62,12 +72,19 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   @Serialize(RegisterResponseDTO)
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   getProfile(@Req() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and issue new access token' })
+  @ApiBody({ type: RefreshTokenDTO, required: false })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 401, description: 'Refresh token missing or invalid' })
   async refresh(
     @Req() req: RequestWithCookies,
     @Res({ passthrough: true }) res: Response,
@@ -95,6 +112,9 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Logout and revoke refresh token' })
+  @ApiBody({ type: LogoutDTO, required: false })
+  @ApiResponse({ status: 204 })
   async logout(
     @Req() req: RequestWithCookies,
     @Res({ passthrough: true }) res: Response,
