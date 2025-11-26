@@ -25,6 +25,7 @@
 
     /* === Module resolution === */
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
 
     /* === Path alias configuration === */
     "paths": {
