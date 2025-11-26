@@ -25,9 +25,10 @@ import { LogoutDTO } from './dtos/logout.dto';
 import { RequestWithCookies } from './types/interfaces/auth-request-with-cookies.interface';
 import { buildRefreshCookieOptions } from 'src/common/utils/cookie.utils';
 import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
-import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginDTO } from './dtos/login.dto';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
