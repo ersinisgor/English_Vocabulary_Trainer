@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 // import { CreateUserDto } from './dtos/create-user.dto';
-import { Serialize } from 'src/common/decorators/serilaize.decorator';
+import { Serialize } from 'src/common/decorators/serialize.decorator';
 import { UserResponseDto } from './dtos/user-response.dto';
 
 @Controller('users')
