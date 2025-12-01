@@ -14,6 +14,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------
+
+enum PartOfSpeech {
+  NOUN
+  VERB
+  ADJECTIVE
+  ADVERB
+  PHRASAL_VERB
+  IDIOM
+}
+
+enum WordLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+// ---------------------------------------------------------
+// USER
+// ---------------------------------------------------------
+
 model User {
   id            String       @id @default(cuid())
   email         String       @unique
@@ -25,6 +51,23 @@ model User {
   refreshTokens RefreshToken[]
 }
 
+// ---------------------------------------------------------
+// WORD
+// ---------------------------------------------------------
+
+model Word {
+  id        String   @id @default(cuid())
+  word      String   @unique
+  level        WordLevel
+  partOfSpeech PartOfSpeech
+  isDeleted    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ---------------------------------------------------------
+// AUTH
+// ---------------------------------------------------------
 
 model RefreshToken {
   id         String   @id @default(cuid())
