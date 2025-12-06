@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { WordsModule } from './words/words.module';
 import configuration from './config/configuration';
 import validationSchema from './config/validation';
 
@@ -18,6 +19,7 @@ import validationSchema from './config/validation';
     UsersModule,
     PrismaModule,
     AuthModule,
+    WordsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
