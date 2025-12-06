@@ -27,7 +27,7 @@ export class WordsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.wordsService.findOne(+id);
+    return this.wordsService.findOne(id);
   }
 
   @Patch(':id')
