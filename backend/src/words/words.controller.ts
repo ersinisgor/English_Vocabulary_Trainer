@@ -32,7 +32,7 @@ export class WordsController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateWordDTO: UpdateWordDTO) {
-    return this.wordsService.update(+id, updateWordDTO);
+    return this.wordsService.update(id, updateWordDTO);
   }
 
   @Delete(':id')

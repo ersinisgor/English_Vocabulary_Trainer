@@ -37,8 +37,16 @@ export class WordsService {
     return word;
   }
 
-  update(id: number, updateWordDTO: UpdateWordDTO) {
-    return `This action updates a #${id} word`;
+  async update(id: string, dto: UpdateWordDTO) {
+    const existing = await this.prisma.word.findUnique({ where: { id } });
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundException(`Word with id ${id} not found`);
+    }
+
+    return this.prisma.word.update({
+      where: { id },
+      data: dto,
+    });
   }
 
   remove(id: number) {
