@@ -58,7 +58,7 @@ model User {
 model Word {
   id        String   @id @default(cuid())
   word      String
-  level        WordLevel
+  level        WordLevel?
   partOfSpeech PartOfSpeech
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
