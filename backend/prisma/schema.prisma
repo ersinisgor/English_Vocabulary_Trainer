@@ -57,12 +57,13 @@ model User {
 
 model Word {
   id        String   @id @default(cuid())
-  word      String   @unique
+  word      String
   level        WordLevel
   partOfSpeech PartOfSpeech
-  isDeleted    Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@unique([word,partOfSpeech], name: "word_partOfSpeech")
 }
 
 // ---------------------------------------------------------

@@ -37,6 +37,6 @@ export class WordsController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.wordsService.remove(+id);
+    return this.wordsService.remove(id);
   }
 }
