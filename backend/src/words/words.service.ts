@@ -7,18 +7,20 @@ import { CreateWordDTO } from './dtos/create-word.dto';
 import { UpdateWordDTO } from './dtos/update-word.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Word } from 'generated/prisma';
+import { normalizeWord } from 'src/common/utils/word.utils';
 
 @Injectable()
 export class WordsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createWordDTO: CreateWordDTO): Promise<Word> {
-    const { word, partOfSpeech } = createWordDTO;
+    const normalizedWord = normalizeWord(createWordDTO.word);
+    const { partOfSpeech, level } = createWordDTO;
 
     const existing = await this.prisma.word.findUnique({
       where: {
         word_partOfSpeech: {
-          word,
+          word: normalizedWord,
           partOfSpeech,
         },
       },
@@ -26,12 +28,16 @@ export class WordsService {
 
     if (existing) {
       throw new ConflictException(
-        `The word "${word}" with partOfSpeech "${partOfSpeech}" already exists.`,
+        `The word "${normalizedWord}" with partOfSpeech "${partOfSpeech}" already exists.`,
       );
     }
 
-    return await this.prisma.word.create({
-      data: createWordDTO,
+    return this.prisma.word.create({
+      data: {
+        word: normalizedWord,
+        partOfSpeech,
+        level,
+      },
     });
   }
 
@@ -55,29 +61,33 @@ export class WordsService {
       throw new NotFoundException(`Word with id ${id} not found`);
     }
 
-    if (dto.word || dto.partOfSpeech) {
-      const newWord = dto.word ?? existing.word;
-      const newPOS = dto.partOfSpeech ?? existing.partOfSpeech;
+    const normalizedWord = dto.word ? normalizeWord(dto.word) : existing.word;
 
+    const newPartOfSpeech = dto.partOfSpeech ?? existing.partOfSpeech;
+
+    if (dto.word || dto.partOfSpeech) {
       const conflict = await this.prisma.word.findUnique({
         where: {
           word_partOfSpeech: {
-            word: newWord,
-            partOfSpeech: newPOS,
+            word: normalizedWord,
+            partOfSpeech: newPartOfSpeech,
           },
         },
       });
 
       if (conflict && conflict.id !== id) {
         throw new ConflictException(
-          `Another word "${newWord}" with partOfSpeech "${newPOS}" already exists.`,
+          `Another word "${normalizedWord}" with partOfSpeech "${newPartOfSpeech}" already exists.`,
         );
       }
     }
 
     return this.prisma.word.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        word: normalizedWord,
+      },
     });
   }
 
