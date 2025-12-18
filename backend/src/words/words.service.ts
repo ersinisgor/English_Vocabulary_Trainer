@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,13 +14,14 @@ import { normalizeWord } from 'src/common/utils/word.utils';
 export class WordsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createWordDTO: CreateWordDTO): Promise<Word> {
+  async create(userId: string, createWordDTO: CreateWordDTO): Promise<Word> {
     const normalizedWord = normalizeWord(createWordDTO.word);
     const { partOfSpeech, level } = createWordDTO;
 
     const existing = await this.prisma.word.findUnique({
       where: {
-        word_partOfSpeech: {
+        user_word_partOfSpeech: {
+          userId,
           word: normalizedWord,
           partOfSpeech,
         },
@@ -37,28 +39,44 @@ export class WordsService {
         word: normalizedWord,
         partOfSpeech,
         level,
+        userId,
       },
     });
   }
 
-  async findAll(): Promise<Word[]> {
-    return this.prisma.word.findMany();
+  async findAll(userId: string): Promise<Word[]> {
+    return this.prisma.word.findMany({
+      where: { userId },
+    });
   }
 
-  async findOne(id: string): Promise<Word> {
-    const word = await this.prisma.word.findUnique({ where: { id } });
+  async findOne(userId: string, id: string): Promise<Word> {
+    const word = await this.prisma.word.findFirst({
+      where: { id, userId },
+    });
 
     if (!word) {
-      throw new NotFoundException(`Word with id ${id} not found`);
+      throw new NotFoundException(`Word not found`);
+    }
+
+    if (word.userId !== userId && !isAdmin) {
+      throw new ForbiddenException('You cannot update this word');
     }
 
     return word;
   }
 
-  async update(id: string, dto: UpdateWordDTO): Promise<Word> {
-    const existing = await this.prisma.word.findUnique({ where: { id } });
+  async update(userId: string, id: string, dto: UpdateWordDTO): Promise<Word> {
+    const existing = await this.prisma.word.findFirst({
+      where: { id, userId },
+    });
+
     if (!existing) {
-      throw new NotFoundException(`Word with id ${id} not found`);
+      throw new NotFoundException(`Word not found`);
+    }
+
+    if (existing.userId !== userId && !isAdmin) {
+      throw new ForbiddenException('You cannot update this word');
     }
 
     const normalizedWord = dto.word ? normalizeWord(dto.word) : existing.word;
@@ -68,7 +86,8 @@ export class WordsService {
     if (dto.word || dto.partOfSpeech) {
       const conflict = await this.prisma.word.findUnique({
         where: {
-          word_partOfSpeech: {
+          user_word_partOfSpeech: {
+            userId,
             word: normalizedWord,
             partOfSpeech: newPartOfSpeech,
           },
@@ -91,11 +110,21 @@ export class WordsService {
     });
   }
 
-  async remove(id: string): Promise<Word> {
-    try {
-      return await this.prisma.word.delete({ where: { id } });
-    } catch {
-      throw new NotFoundException(`Word with id "${id}" not found.`);
+  async remove(userId: string, id: string): Promise<Word> {
+    const word = await this.prisma.word.findFirst({
+      where: { id, userId },
+    });
+
+    if (!word) {
+      throw new NotFoundException(`Word not found`);
     }
+
+    if (word.userId !== userId && !isAdmin) {
+      throw new ForbiddenException('You cannot update this word');
+    }
+
+    return this.prisma.word.delete({
+      where: { id },
+    });
   }
 }
