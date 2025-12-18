@@ -27,6 +27,7 @@ import { buildRefreshCookieOptions } from 'src/common/utils/cookie.utils';
 import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginDTO } from './dtos/login.dto';
+import { isProductionEnv } from 'src/common/utils/env.utils';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -53,7 +54,7 @@ export class AuthController {
 
     const cookieOptions = buildRefreshCookieOptions(
       this.configService.get<string>('jwt.refreshExpiresIn', '7d'),
-      this.isProd(),
+      isProductionEnv(this.configService),
     );
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
 
@@ -104,7 +105,7 @@ export class AuthController {
     // set new refresh cookie
     const cookieOptions = buildRefreshCookieOptions(
       this.configService.get<string>('jwt.refreshExpiresIn', '7d'),
-      this.isProd(),
+      isProductionEnv(this.configService),
     );
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
 
@@ -112,15 +113,15 @@ export class AuthController {
   }
 
   @Post('logout')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @ApiBody({ type: LogoutDTO, required: false })
-  @ApiResponse({ status: 204 })
+  @ApiResponse({ status: 204, description: 'Logged out successfully' })
   async logout(
     @Req() req: RequestWithCookies,
     @Res({ passthrough: true }) res: Response,
     @Body() logoutDTO: LogoutDTO,
-  ) {
+  ): Promise<void> {
     const cookieToken = req.cookies?.[REFRESH_COOKIE_NAME];
     const incoming = cookieToken ?? logoutDTO.refreshToken;
 
@@ -128,18 +129,12 @@ export class AuthController {
       await this.authService.logout(incoming);
     }
 
-    // clear cookie
+    // clear refresh cookie
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
-      secure: this.isProd(),
+      secure: isProductionEnv(this.configService),
       sameSite: 'lax',
       path: '/',
     });
-
-    return { ok: true };
-  }
-
-  private isProd(): boolean {
-    return this.configService.get<string>('environment') === 'production';
   }
 }

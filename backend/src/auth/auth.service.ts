@@ -267,7 +267,11 @@ export class AuthService {
   }
 
   // logout: revoke given refresh token (by composite). For "logout all", you can revoke all tokens for user.
-  async logout(composite?: string, userId?: string, revokeAll = false) {
+  async logout(
+    composite?: string,
+    userId?: string,
+    revokeAll = false,
+  ): Promise<void> {
     if (revokeAll && userId) {
       await this.prisma.refreshToken.updateMany({
         where: { userId, revoked: false },
