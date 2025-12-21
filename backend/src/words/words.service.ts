@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -56,11 +55,7 @@ export class WordsService {
     });
 
     if (!word) {
-      throw new NotFoundException(`Word not found`);
-    }
-
-    if (word.userId !== userId && !isAdmin) {
-      throw new ForbiddenException('You cannot update this word');
+      throw new NotFoundException('Word not found');
     }
 
     return word;
@@ -72,13 +67,10 @@ export class WordsService {
     });
 
     if (!existing) {
-      throw new NotFoundException(`Word not found`);
+      throw new NotFoundException('Word not found');
     }
 
-    if (existing.userId !== userId && !isAdmin) {
-      throw new ForbiddenException('You cannot update this word');
-    }
-
+    // conflict logic stays (this is business logic, not auth)
     const normalizedWord = dto.word ? normalizeWord(dto.word) : existing.word;
 
     const newPartOfSpeech = dto.partOfSpeech ?? existing.partOfSpeech;
@@ -116,11 +108,7 @@ export class WordsService {
     });
 
     if (!word) {
-      throw new NotFoundException(`Word not found`);
-    }
-
-    if (word.userId !== userId && !isAdmin) {
-      throw new ForbiddenException('You cannot update this word');
+      throw new NotFoundException('Word not found');
     }
 
     return this.prisma.word.delete({
