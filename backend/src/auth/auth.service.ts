@@ -55,6 +55,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
@@ -87,7 +88,7 @@ export class AuthService {
     try {
       const createdUser = await this.usersService.create(userData);
       return createdUser;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // handle unique constraint race (Prisma error code P2002) edge case when two users try to register the same email nearly simultaneously.
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -256,6 +257,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
     };
     const accessToken = await this.jwtService.signAsync(payload);
 
