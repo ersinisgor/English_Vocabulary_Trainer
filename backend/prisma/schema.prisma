@@ -76,6 +76,8 @@ model Word {
 
   @@unique([userId, word, partOfSpeech], name: "user_word_partOfSpeech")
   @@index([userId])
+  @@index([userId, createdAt])
+  @@index([userId, level, partOfSpeech])
 }
 
 
