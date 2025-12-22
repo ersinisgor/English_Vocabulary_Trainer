@@ -8,12 +8,14 @@ import {
   Delete,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { WordsService } from './words.service';
 import { CreateWordDTO } from './dtos/create-word.dto';
 import { UpdateWordDTO } from './dtos/update-word.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from 'src/auth/types/interfaces/authenticated-request.interface';
+import { FindWordsQueryDTO } from './dtos/find-words.query.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('words')
@@ -29,8 +31,8 @@ export class WordsController {
   }
 
   @Get()
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.wordsService.findAll(req.user.id);
+  findAll(@Req() req: AuthenticatedRequest, @Query() query: FindWordsQueryDTO) {
+    return this.wordsService.findAll(req.user.id, query);
   }
 
   @Get(':id')

@@ -8,6 +8,9 @@ import { UpdateWordDTO } from './dtos/update-word.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Word } from 'generated/prisma';
 import { normalizeWord } from 'src/common/utils/word.utils';
+import { FindWordsQueryDTO } from './dtos/find-words.query.dto';
+import { WordPaginationResult } from './types/word-pagination-result.type';
+import { Prisma } from 'generated/prisma';
 
 @Injectable()
 export class WordsService {
@@ -43,10 +46,46 @@ export class WordsService {
     });
   }
 
-  async findAll(userId: string): Promise<Word[]> {
-    return this.prisma.word.findMany({
-      where: { userId },
-    });
+  async findAll(
+    userId: string,
+    query: FindWordsQueryDTO,
+  ): Promise<WordPaginationResult> {
+    const { page = 1, limit = 20, level, partOfSpeech, search } = query;
+
+    const skip = (page - 1) * limit;
+
+    const where = {
+      userId,
+      ...(level && { level }),
+      ...(partOfSpeech && { partOfSpeech }),
+      ...(search && {
+        word: {
+          contains: search.toLowerCase(),
+          mode: Prisma.QueryMode.insensitive,
+        },
+      }),
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.word.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.word.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+      },
+    };
   }
 
   async findOne(userId: string, id: string): Promise<Word> {
