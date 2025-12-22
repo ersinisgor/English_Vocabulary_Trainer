@@ -9,8 +9,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Word } from 'generated/prisma';
 import { normalizeWord } from 'src/common/utils/word.utils';
 import { FindWordsQueryDTO } from './dtos/find-words.query.dto';
-import { WordPaginationResult } from './types/word-pagination-result.type';
 import { Prisma } from 'generated/prisma';
+import { WordPaginationResponse } from './types/word-pagination-result.type';
 
 @Injectable()
 export class WordsService {
@@ -49,7 +49,7 @@ export class WordsService {
   async findAll(
     userId: string,
     query: FindWordsQueryDTO,
-  ): Promise<WordPaginationResult> {
+  ): Promise<WordPaginationResponse> {
     const { page = 1, limit = 20, level, partOfSpeech, search } = query;
 
     const skip = (page - 1) * limit;
