@@ -10,7 +10,6 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './types/interfaces/jwt-payload.interface';
 import { RegisterDTO } from './dtos/register.dto';
 import { RegisterResponseDTO } from './dtos/register-response.dto';
-import { CreateUserDTO } from 'src/users/dtos/create-user.dto';
 import { Prisma, User } from 'generated/prisma';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -25,6 +24,7 @@ import {
   REFRESH_RAW_BYTES,
   SALT_ROUNDS,
 } from 'src/common/constants/auth.constants';
+import { AuthCreateUserDTO } from './dtos/auth-create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -79,7 +79,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(password, this.saltRounds);
 
-    const userData: CreateUserDTO = {
+    const userData: AuthCreateUserDTO = {
       email,
       password: passwordHash,
       username,
