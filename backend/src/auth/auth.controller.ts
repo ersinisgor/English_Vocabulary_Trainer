@@ -15,8 +15,6 @@ import { AuthService } from './auth.service';
 import { RegisterDTO } from './dtos/register.dto';
 import { RegisterResponseDTO } from './dtos/register-response.dto';
 import { Serialize } from 'src/common/decorators/serialize.decorator';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Response } from 'express';
 import { AuthenticatedRequest } from './types/interfaces/authenticated-request.interface';
 import { ConfigService } from '@nestjs/config';
@@ -28,6 +26,8 @@ import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginDTO } from './dtos/login.dto';
 import { isProductionEnv } from 'src/common/utils/env.utils';
+import { Public } from 'src/common/decorators/public.decorator';
+import { LocalAuthGuard } from './guards/local-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,6 +37,7 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  @Public()
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -61,6 +62,7 @@ export class AuthController {
     return { accessToken };
   }
 
+  @Public()
   @Post('register')
   @Serialize(RegisterResponseDTO)
   @ApiOperation({ summary: 'Register a new user' })
@@ -71,7 +73,6 @@ export class AuthController {
     return await this.authService.register(registerDTO);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   @Serialize(RegisterResponseDTO)
   @ApiOperation({ summary: 'Get current authenticated user' })
@@ -81,6 +82,7 @@ export class AuthController {
     return req.user;
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate refresh token and issue new access token' })
