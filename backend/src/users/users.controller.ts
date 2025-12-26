@@ -21,11 +21,10 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'generated/prisma';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateUserDTO } from './dtos/create-user.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @ApiTags('Users')
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Serialize(UserResponseDto)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

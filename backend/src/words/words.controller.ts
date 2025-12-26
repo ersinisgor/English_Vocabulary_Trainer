@@ -6,14 +6,12 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   Req,
   Query,
 } from '@nestjs/common';
 import { WordsService } from './words.service';
 import { CreateWordDTO } from './dtos/create-word.dto';
 import { UpdateWordDTO } from './dtos/update-word.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from 'src/auth/types/interfaces/authenticated-request.interface';
 import { FindWordsQueryDTO } from './dtos/find-words.query.dto';
 import {
@@ -31,7 +29,6 @@ import { WordResponseDTO } from './dtos/word-response.dto';
 
 @ApiTags('Words')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('words')
 export class WordsController {
   constructor(private readonly wordsService: WordsService) {}

@@ -7,6 +7,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import cookieParser from 'cookie-parser';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { REFRESH_COOKIE_NAME } from './common/constants/auth.constants';
+import { Reflector } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -32,6 +34,9 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   const config = app.get(ConfigService);
   const port = config.get<number>('port') ?? 3000;
