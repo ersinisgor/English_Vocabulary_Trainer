@@ -5,22 +5,34 @@ import {
   Body,
   Param,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-// import { CreateUserDto } from './dtos/create-user.dto';
 import { Serialize } from 'src/common/decorators/serialize.decorator';
 import { UserResponseDto } from './dtos/user-response.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
+import { UseGuards } from '@nestjs/common';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { Role } from 'generated/prisma';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { CreateUserDTO } from './dtos/create-user.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @ApiTags('Users')
 @Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Serialize(UserResponseDto)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all users' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all users (ADMIN only)' })
   @ApiResponse({
     status: 200,
     description: 'List of all users',
@@ -32,7 +44,8 @@ export class UsersController {
   }
 
   @Get(':email')
-  @ApiOperation({ summary: 'Get a user by email' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get a user by email (ADMIN only)' })
   @ApiParam({
     name: 'email',
     type: String,
@@ -55,20 +68,19 @@ export class UsersController {
   }
 
   @Post()
-  // Temporarily disabled until Role Guard is created
-  @ApiOperation({
-    summary: 'Create a new user (DISABLED — use /auth/register instead)',
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create user (ADMIN only)' })
+  @ApiBody({ type: CreateUserDTO })
+  @ApiResponse({
+    status: 201,
+    description: 'User created successfully',
+    type: UserResponseDto,
   })
   @ApiResponse({
-    status: 403,
-    description: 'User creation is blocked',
+    status: 409,
+    description: 'Email already exists',
   })
-  create() {
-    throw new ForbiddenException(
-      'User creation is disabled. Use /auth/register instead.',
-    );
+  async create(@Body() dto: CreateUserDTO) {
+    return this.usersService.create(dto);
   }
-  // async create(@Body() dto: CreateUserDto) {
-  //   return this.usersService.create(dto);
-  // }
 }
