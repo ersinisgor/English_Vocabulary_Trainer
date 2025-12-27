@@ -23,7 +23,13 @@ import { LogoutDTO } from './dtos/logout.dto';
 import { RequestWithCookies } from './types/interfaces/auth-request-with-cookies.interface';
 import { buildRefreshCookieOptions } from 'src/common/utils/cookie.utils';
 import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { LoginDTO } from './dtos/login.dto';
 import { isProductionEnv } from 'src/common/utils/env.utils';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -75,6 +81,7 @@ export class AuthController {
 
   @Get('me')
   @Serialize(RegisterResponseDTO)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current authenticated user' })
   @ApiResponse({ status: 200 })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -116,6 +123,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @ApiBody({ type: LogoutDTO, required: false })
   @ApiResponse({ status: 204, description: 'Logged out successfully' })
