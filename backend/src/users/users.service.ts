@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { SALT_ROUNDS } from 'src/common/constants/auth.constants';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDTO } from './dtos/update-user.dto';
+import { UpdateMeDTO } from './dtos/update-me.dto';
 
 @Injectable()
 export class UsersService {
@@ -101,6 +102,28 @@ export class UsersService {
 
     return this.prisma.user.delete({
       where: { id },
+    });
+  }
+
+  async updateMe(userId: string, dto: UpdateMeDTO): Promise<User> {
+    const user = await this.findUniqueById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let passwordHash: string | undefined;
+
+    if (dto.password) {
+      passwordHash = await bcrypt.hash(dto.password, this.saltRounds);
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        username: dto.username,
+        passwordHash,
+      },
     });
   }
 }
