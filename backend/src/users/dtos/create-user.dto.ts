@@ -34,6 +34,7 @@ export class CreateUserDTO {
   @MinLength(8)
   password: string;
 
+  @ApiPropertyOptional({ enum: Role, description: 'ADMIN only field' })
   @IsOptional()
   @IsEnum(Role)
   role?: Role;
