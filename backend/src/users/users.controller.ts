@@ -5,6 +5,8 @@ import {
   Body,
   Param,
   NotFoundException,
+  Delete,
+  Patch,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Serialize } from 'src/common/decorators/serialize.decorator';
@@ -21,6 +23,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'generated/prisma';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreateUserDTO } from './dtos/create-user.dto';
+import { UpdateUserDTO } from './dtos/update-user.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -81,5 +84,36 @@ export class UsersController {
   })
   async create(@Body() dto: CreateUserDTO) {
     return this.usersService.create(dto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update user (ADMIN only)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Email already exists',
+  })
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDTO) {
+    return this.usersService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Delete user' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 200, description: 'User deleted' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 }

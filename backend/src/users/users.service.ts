@@ -1,10 +1,15 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDTO } from './dtos/create-user.dto';
 import { User } from 'generated/prisma';
 import { ConfigService } from '@nestjs/config';
 import { SALT_ROUNDS } from 'src/common/constants/auth.constants';
 import * as bcrypt from 'bcrypt';
+import { UpdateUserDTO } from './dtos/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -51,6 +56,51 @@ export class UsersService {
         passwordHash,
         role,
       },
+    });
+  }
+
+  async update(id: string, dto: UpdateUserDTO): Promise<User> {
+    const user = await this.findUniqueById(id);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const emailExists = await this.findUniqueByEmail(dto.email);
+      if (emailExists) {
+        throw new ConflictException('Email already in use');
+      }
+    }
+
+    let passwordHash: string | undefined;
+
+    if (dto.password) {
+      passwordHash = await bcrypt.hash(dto.password, this.saltRounds);
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        email: dto.email,
+        username: dto.username,
+        role: dto.role,
+        passwordHash,
+      },
+    });
+  }
+
+  async remove(id: string): Promise<User> {
+    const user = await this.prisma.user.findFirst({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.delete({
+      where: { id },
     });
   }
 }
