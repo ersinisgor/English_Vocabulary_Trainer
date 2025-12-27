@@ -91,6 +91,21 @@ export class UsersController {
     return this.usersService.create(dto);
   }
 
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async updateMe(@Req() req: AuthenticatedRequest, @Body() dto: UpdateMeDTO) {
+    return this.usersService.updateMe(req.user.id, dto);
+  }
+
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update user (ADMIN only)' })
@@ -120,20 +135,5 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
-  }
-
-  @Patch('me')
-  @ApiOperation({ summary: 'Update current user profile' })
-  @ApiResponse({
-    status: 200,
-    description: 'User updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found',
-  })
-  async updateMe(@Req() req: AuthenticatedRequest, @Body() dto: UpdateMeDTO) {
-    return this.usersService.updateMe(req.user.id, dto);
   }
 }
