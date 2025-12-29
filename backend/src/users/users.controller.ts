@@ -12,14 +12,6 @@ import {
 import { UsersService } from './users.service';
 import { Serialize } from 'src/common/decorators/serialize.decorator';
 import { UserResponseDto } from './dtos/user-response.dto';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 import { UseGuards } from '@nestjs/common';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'generated/prisma';
@@ -28,9 +20,15 @@ import { CreateUserDTO } from './dtos/create-user.dto';
 import { UpdateUserDTO } from './dtos/update-user.dto';
 import { UpdateMeDTO } from './dtos/update-me.dto';
 import { AuthenticatedRequest } from 'src/auth/types/interfaces/authenticated-request.interface';
+import {
+  ApiGetAllUsers,
+  ApiGetUserByEmail,
+  ApiCreateUser,
+  ApiUpdateMe,
+  ApiUpdateUser,
+  ApiDeleteUser,
+} from 'src/common/swagger/users/users.swagger';
 
-@ApiTags('Users')
-@ApiBearerAuth()
 @Controller('users')
 @UseGuards(RolesGuard)
 @Serialize(UserResponseDto)
@@ -39,34 +37,14 @@ export class UsersController {
 
   @Get()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get all users (ADMIN only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all users',
-    type: UserResponseDto,
-    isArray: true,
-  })
+  @ApiGetAllUsers()
   async getAll() {
     return this.usersService.findAll();
   }
 
   @Get(':email')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get a user by email (ADMIN only)' })
-  @ApiParam({
-    name: 'email',
-    type: String,
-    description: 'Email of the user to fetch',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User with the given email',
-    type: UserResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found',
-  })
+  @ApiGetUserByEmail()
   async getByEmail(@Param('email') email: string) {
     const user = await this.usersService.findUniqueByEmail(email);
     if (!user)
@@ -76,63 +54,27 @@ export class UsersController {
 
   @Post()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Create user (ADMIN only)' })
-  @ApiBody({ type: CreateUserDTO })
-  @ApiResponse({
-    status: 201,
-    description: 'User created successfully',
-    type: UserResponseDto,
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email already exists',
-  })
+  @ApiCreateUser()
   async create(@Body() dto: CreateUserDTO) {
     return this.usersService.create(dto);
   }
 
   @Patch('me')
-  @ApiOperation({ summary: 'Update current user profile' })
-  @ApiResponse({
-    status: 200,
-    description: 'User updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found',
-  })
+  @ApiUpdateMe()
   async updateMe(@Req() req: AuthenticatedRequest, @Body() dto: UpdateMeDTO) {
     return this.usersService.updateMe(req.user.id, dto);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Update user (ADMIN only)' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({
-    status: 200,
-    description: 'User updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email already exists',
-  })
+  @ApiUpdateUser()
   async update(@Param('id') id: string, @Body() dto: UpdateUserDTO) {
     return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Delete user (ADMIN only)' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 200, description: 'User deleted' })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiDeleteUser()
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
