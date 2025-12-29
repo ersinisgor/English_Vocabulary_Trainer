@@ -16,7 +16,15 @@ import {
   LogoutRequestSchema,
 } from './auth.schemas';
 
-import { SuccessSchema } from './responses.swagger';
+import {
+  EmailConflictError,
+  InternalServerError,
+  InvalidCredentialsError,
+  RefreshTokenErrors,
+  SuccessSchema,
+  UnauthorizedError,
+  ValidationError,
+} from '../responses.swagger';
 
 /**
  * =========================
@@ -38,8 +46,18 @@ export function ApiLogin() {
       schema: SuccessSchema(LoginResponseSchema),
     }),
     ApiResponse({
+      status: 400,
+      description: 'Validation failed',
+      schema: ValidationError,
+    }),
+    ApiResponse({
       status: 401,
-      description: 'Invalid email or password',
+      description: 'Invalid credentials',
+      schema: InvalidCredentialsError,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
     }),
   );
 }
@@ -63,8 +81,16 @@ export function ApiRegister() {
       schema: SuccessSchema(RegisterResponseSchema),
     }),
     ApiResponse({
+      status: 400,
+      schema: ValidationError,
+    }),
+    ApiResponse({
       status: 409,
-      description: 'Email already exists',
+      schema: EmailConflictError,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
     }),
   );
 }
@@ -88,7 +114,11 @@ export function ApiGetMe() {
     }),
     ApiResponse({
       status: 401,
-      description: 'Unauthorized',
+      schema: UnauthorizedError,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
     }),
   );
 }
@@ -115,7 +145,12 @@ export function ApiRefresh() {
     }),
     ApiResponse({
       status: 401,
-      description: 'Invalid or expired refresh token',
+      description: 'Refresh token error',
+      schema: RefreshTokenErrors,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
     }),
   );
 }
@@ -141,7 +176,11 @@ export function ApiLogout() {
     }),
     ApiResponse({
       status: 401,
-      description: 'Unauthorized',
+      schema: UnauthorizedError,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
     }),
   );
 }
