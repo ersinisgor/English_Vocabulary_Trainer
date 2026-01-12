@@ -1,4 +1,5 @@
 import { Exclude, Expose } from 'class-transformer';
+import { Role } from 'generated/prisma';
 
 @Exclude()
 export class RegisterResponseDTO {
@@ -10,4 +11,7 @@ export class RegisterResponseDTO {
 
   @Expose()
   username: string | null;
+
+  @Expose()
+  role: Role;
 }

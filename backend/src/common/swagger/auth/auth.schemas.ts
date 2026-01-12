@@ -1,3 +1,5 @@
+import { Role } from 'generated/prisma';
+
 export const LoginRequestSchema = {
   type: 'object',
   required: ['email', 'password'],
@@ -68,6 +70,11 @@ export const RegisterResponseSchema = {
       type: 'string',
       nullable: true,
       example: 'johnny',
+    },
+    role: {
+      type: 'string',
+      enum: Object.values(Role),
+      example: Role.ADMIN,
     },
   },
 };
