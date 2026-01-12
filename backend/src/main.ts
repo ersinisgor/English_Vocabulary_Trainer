@@ -14,15 +14,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
+  // Set global API prefix for versioning
+  app.setGlobalPrefix('api/v1');
+
   const swaggerConfig = new DocumentBuilder()
     .setTitle('English Vocabulary Trainer')
     .setDescription('API description')
     .addCookieAuth(REFRESH_COOKIE_NAME)
-    .setVersion('0.1')
+    .setVersion('1.0')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
   app.use(cookieParser());
   app.useGlobalPipes(
