@@ -46,6 +46,19 @@ export const UpdateUserSchema: SchemaObject = {
   },
 };
 
+export const UpdateUserRoleSchema: SchemaObject = {
+  type: 'object',
+  required: ['role'],
+  properties: {
+    role: {
+      type: 'string',
+      enum: Object.values(Role),
+      example: Role.ADMIN,
+      description: 'New role of the user (ADMIN only)',
+    },
+  },
+};
+
 export const UpdateMeSchema: SchemaObject = {
   type: 'object',
   properties: {

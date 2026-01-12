@@ -22,6 +22,7 @@ import {
   CreateUserSchema,
   UpdateUserSchema,
   UpdateMeSchema,
+  UpdateUserRoleSchema,
 } from './users.schemas';
 
 /**
@@ -202,6 +203,52 @@ export function ApiUpdateUser() {
     ApiResponse({
       status: 409,
       schema: EmailConflictError,
+    }),
+    ApiResponse({
+      status: 500,
+      schema: InternalServerError,
+    }),
+  );
+}
+
+/**
+ * =========================
+ * UPDATE USER ROLE (ADMIN)
+ * =========================
+ */
+export function ApiUpdateUserRole() {
+  return applyDecorators(
+    ApiTags('Users'),
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Update user role (ADMIN only)' }),
+    ApiParam({
+      name: 'id',
+      type: String,
+      description: 'User ID',
+    }),
+    ApiBody({
+      schema: UpdateUserRoleSchema,
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'User role updated successfully',
+      schema: SuccessSchema(UserSchema),
+    }),
+    ApiResponse({
+      status: 400,
+      schema: ValidationError,
+    }),
+    ApiResponse({
+      status: 401,
+      schema: UnauthorizedError,
+    }),
+    ApiResponse({
+      status: 403,
+      schema: ForbiddenError,
+    }),
+    ApiResponse({
+      status: 404,
+      schema: UserNotFoundError,
     }),
     ApiResponse({
       status: 500,
