@@ -1,33 +1,35 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  NotFoundException,
+  Controller,
   Delete,
+  Get,
+  NotFoundException,
+  Param,
   Patch,
+  Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { Serialize } from 'src/common/decorators/serialize.decorator';
-import { UserResponseDto } from './dtos/user-response.dto';
-import { UseGuards } from '@nestjs/common';
-import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from 'generated/prisma';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { CreateUserDTO } from './dtos/create-user.dto';
-import { UpdateUserDTO } from './dtos/update-user.dto';
-import { UpdateMeDTO } from './dtos/update-me.dto';
 import { AuthenticatedRequest } from 'src/auth/types/interfaces/authenticated-request.interface';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { Serialize } from 'src/common/decorators/serialize.decorator';
 import {
+  ApiCreateUser,
+  ApiDeleteUser,
   ApiGetAllUsers,
   ApiGetUserByEmail,
-  ApiCreateUser,
   ApiUpdateMe,
   ApiUpdateUser,
-  ApiDeleteUser,
+  ApiUpdateUserRole,
 } from 'src/common/swagger/users/users.swagger';
+import { CreateUserDTO } from './dtos/create-user.dto';
+import { UpdateMeDTO } from './dtos/update-me.dto';
+import { UpdateUserDTO } from './dtos/update-user.dto';
+import { UserResponseDto } from './dtos/user-response.dto';
+import { UsersService } from './users.service';
+import { UpdateUserRoleDTO } from './dtos/update-user-role.dto';
 
 @Controller('users')
 @UseGuards(RolesGuard)
@@ -70,6 +72,16 @@ export class UsersController {
   @ApiUpdateUser()
   async update(@Param('id') id: string, @Body() dto: UpdateUserDTO) {
     return this.usersService.update(id, dto);
+  }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN)
+  @ApiUpdateUserRole()
+  async updateUserRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserRoleDTO,
+  ) {
+    return this.usersService.updateRole(id, dto.role);
   }
 
   @Delete(':id')

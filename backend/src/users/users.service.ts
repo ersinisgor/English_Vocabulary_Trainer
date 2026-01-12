@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDTO } from './dtos/create-user.dto';
-import { User } from 'generated/prisma';
+import { Role, User } from 'generated/prisma';
 import { ConfigService } from '@nestjs/config';
 import { SALT_ROUNDS } from 'src/common/constants/auth.constants';
 import * as bcrypt from 'bcrypt';
@@ -102,6 +102,19 @@ export class UsersService {
 
     return this.prisma.user.delete({
       where: { id },
+    });
+  }
+
+  async updateRole(userId: string, role: Role) {
+    const user = await this.findUniqueById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
     });
   }
 
