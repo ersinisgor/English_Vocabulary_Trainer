@@ -41,7 +41,7 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiGetAllUsers()
   async getAll() {
-    return this.usersService.findAll();
+    return await this.usersService.findAll();
   }
 
   @Get(':email')
@@ -58,20 +58,20 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiCreateUser()
   async create(@Body() dto: CreateUserDTO) {
-    return this.usersService.create(dto);
+    return await this.usersService.create(dto);
   }
 
   @Patch('me')
   @ApiUpdateMe()
   async updateMe(@Req() req: AuthenticatedRequest, @Body() dto: UpdateMeDTO) {
-    return this.usersService.updateMe(req.user.id, dto);
+    return await this.usersService.updateMe(req.user.id, dto);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiUpdateUser()
   async update(@Param('id') id: string, @Body() dto: UpdateUserDTO) {
-    return this.usersService.update(id, dto);
+    return await this.usersService.update(id, dto);
   }
 
   @Patch(':id/role')
@@ -81,13 +81,13 @@ export class UsersController {
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleDTO,
   ) {
-    return this.usersService.updateRole(id, dto.role);
+    return await this.usersService.updateRole(id, dto.role);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiDeleteUser()
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.usersService.remove(id);
   }
 }
