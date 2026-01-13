@@ -31,40 +31,43 @@ export class WordsController {
   @Post()
   @Serialize(WordResponseDTO)
   @ApiCreateWord()
-  create(
+  async create(
     @Req() req: AuthenticatedRequest,
     @Body() createWordDTO: CreateWordDTO,
   ) {
-    return this.wordsService.create(req.user.id, createWordDTO);
+    return await this.wordsService.create(req.user.id, createWordDTO);
   }
 
   @Get()
   @ApiGetWords()
-  findAll(@Req() req: AuthenticatedRequest, @Query() query: FindWordsQueryDTO) {
-    return this.wordsService.findAll(req.user.id, query);
+  async findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: FindWordsQueryDTO,
+  ) {
+    return await this.wordsService.findAll(req.user.id, query);
   }
 
   @Get(':id')
   @Serialize(WordResponseDTO)
   @ApiGetWordById()
-  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.wordsService.findOne(req.user.id, id);
+  async findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return await this.wordsService.findOne(req.user.id, id);
   }
 
   @Patch(':id')
   @Serialize(WordResponseDTO)
   @ApiUpdateWord()
-  update(
+  async update(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() updateWordDTO: UpdateWordDTO,
   ) {
-    return this.wordsService.update(req.user.id, id, updateWordDTO);
+    return await this.wordsService.update(req.user.id, id, updateWordDTO);
   }
 
   @Delete(':id')
   @ApiDeleteWord()
-  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.wordsService.remove(req.user.id, id);
+  async remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return await this.wordsService.remove(req.user.id, id);
   }
 }
