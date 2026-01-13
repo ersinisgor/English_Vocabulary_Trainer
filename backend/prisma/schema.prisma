@@ -11,6 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------
@@ -41,20 +42,38 @@ enum WordLevel {
 }
 
 // ---------------------------------------------------------
+// AUTH
+// ---------------------------------------------------------
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------
 // USER
 // ---------------------------------------------------------
 
 model User {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  username      String?
-  passwordHash  String
-  role          Role          @default(USER)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String?
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   words         Word[]
   refreshTokens RefreshToken[]
+  userSentences UserSentence[]
+  wordStates    UserWordState[]
 }
 
 // ---------------------------------------------------------
@@ -62,16 +81,27 @@ model User {
 // ---------------------------------------------------------
 
 model Word {
-  id            String        @id @default(cuid())
-  word          String
-  level         WordLevel?
-  partOfSpeech  PartOfSpeech
+  id           String       @id @default(cuid())
+  word         String
+  level        WordLevel?
+  partOfSpeech PartOfSpeech
 
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  meanings      WordMeaning[]
+  examples      ExampleSentence[]
+  metadata      WordMetadata?
+  tags          WordTag[]
+  synonyms      Synonym[]
+  antonyms      Antonym[]
+  relatedWords  RelatedWord[]
+  userStates    UserWordState[]
+  userSentences UserSentence[]
 
   @@unique([userId, word, partOfSpeech], name: "user_word_partOfSpeech")
   @@index([userId])
@@ -79,19 +109,167 @@ model Word {
   @@index([userId, level, partOfSpeech])
 }
 
+// ---------------------------------------------------------
+// WORD MEANING
+// ---------------------------------------------------------
+
+model WordMeaning {
+  id                String   @id @default(cuid())
+  wordId            String
+  isPrimaryMeaning  Boolean  @default(false)
+  meaningOrder      Int
+  englishDefinition String
+  nativeMeanings    String // raw string like "dikkat etmek / fark etmek"
+  createdAt         DateTime @default(now())
+
+  // Relations
+  word             Word                    @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  splittedMeanings SplittedNativeMeaning[]
+
+  @@index([wordId])
+}
+
+model SplittedNativeMeaning {
+  id          String   @id @default(cuid())
+  meaningId   String
+  meaningText String
+  isPrimary   Boolean  @default(false)
+  order       Int
+  sideNotes   String[] // array of strings
+
+  meaning WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
+  @@index([meaningId])
+}
 
 // ---------------------------------------------------------
-// AUTH
+// EXAMPLE SENTENCES (SYSTEM-PROVIDED)
 // ---------------------------------------------------------
 
-model RefreshToken {
-  id         String   @id @default(cuid())
-  tokenHash  String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String
-  createdAt  DateTime @default(now())
-  revoked    Boolean  @default(false)
-  expiresAt  DateTime
+model ExampleSentence {
+  id               String  @id @default(cuid())
+  wordId           String
+  sentence         String
+  translation      String
+  clozeDeletedWord Boolean
+  clozePosition    Int?
+  boldIndexes      Int[]
+  highlightedWord  String
 
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([wordId])
+}
+
+// ---------------------------------------------------------
+// USER-CREATED SENTENCES (PER USER)
+// ---------------------------------------------------------
+
+model UserSentence {
+  id              String  @id @default(cuid())
+  userId          String
+  wordId          String
+  sentence        String
+  translation     String
+  hideWord        Boolean @default(false)
+  highlightedWord String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([wordId])
+}
+
+// ---------------------------------------------------------
+// WORD METADATA
+// ---------------------------------------------------------
+
+model WordMetadata {
+  id     String @id @default(cuid())
+  wordId String @unique
+
+  pronunciation String?
+  imageUrl      String?
+
+  // forms
+  singularForm        String?
+  pluralForm          String?
+  possessiveForm      String?
+  regularForms        String[]
+  irregularV2         String?
+  irregularV3         String?
+  presentParticiple   String?
+  thirdPersonSingular String?
+  gerund              String?
+  infinitive          String?
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// TAGS (e.g., "B2", "Pre-Intermediate")
+// ---------------------------------------------------------
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+
+  words WordTag[]
+}
+
+model WordTag {
+  wordId String
+  tagId  String
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([wordId, tagId])
+}
+
+// ---------------------------------------------------------
+// SYNONYMS / ANTONYMS / RELATED WORDS
+// ---------------------------------------------------------
+
+model Synonym {
+  id     String @id @default(cuid())
+  wordId String
+  text   String
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+model Antonym {
+  id     String @id @default(cuid())
+  wordId String
+  text   String
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+model RelatedWord {
+  id     String @id @default(cuid())
+  wordId String
+  text   String
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// USER-WORD STATE (star, keepLearning, etc.)
+// ---------------------------------------------------------
+
+model UserWordState {
+  id           String  @id @default(cuid())
+  userId       String
+  wordId       String
+  starred      Boolean @default(false)
+  keepLearning Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
   @@index([userId])
 }
