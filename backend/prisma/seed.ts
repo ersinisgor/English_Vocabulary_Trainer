@@ -2,17 +2,11 @@
                   @typescript-eslint/no-unsafe-call,
                   @typescript-eslint/no-unsafe-member-access */
 
-import type { PrismaClient as PrismaClientType } from '@prisma/client';
 import { PrismaClient, Role } from '../generated/prisma';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+
 import * as bcrypt from 'bcrypt';
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
-const prisma: PrismaClientType = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   const adminEmail = process.env.ADMIN_EMAIL;
