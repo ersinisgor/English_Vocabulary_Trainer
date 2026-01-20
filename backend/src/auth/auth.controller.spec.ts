@@ -8,6 +8,7 @@ import { AuthenticatedRequest } from './types/interfaces/authenticated-request.i
 import { mockRequest } from '../../test/utils/mock-request';
 import { mockUser } from '../../test/utils/mock-user';
 import { mockResponse } from '../../test/utils/mock-response';
+import { REFRESH_COOKIE_NAME } from 'src/common/constants/auth.constants';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -71,7 +72,7 @@ describe('AuthController', () => {
       expect(result).toEqual({ accessToken: 'access-token' });
       expect(jest.spyOn(authService, 'login')).toHaveBeenCalledWith(mockUser);
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'refresh-token',
         expect.objectContaining({
           httpOnly: true,
@@ -101,7 +102,7 @@ describe('AuthController', () => {
       await controller.login(req, res as unknown as Response);
 
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'refresh-token',
         expect.objectContaining({
           secure: true,
@@ -121,7 +122,7 @@ describe('AuthController', () => {
       await controller.login(req, res as unknown as Response);
 
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'refresh-token',
         expect.objectContaining({
           secure: false,
@@ -141,7 +142,7 @@ describe('AuthController', () => {
       await controller.login(req, res as unknown as Response);
 
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'refresh-token',
         expect.objectContaining({
           maxAge: 604800000, // 7 days in ms
@@ -208,7 +209,7 @@ describe('AuthController', () => {
 
     it('should refresh using cookie token', async () => {
       const req = mockRequest({
-        cookies: { refreshToken: 'cookie-refresh-token' },
+        cookies: { [REFRESH_COOKIE_NAME]: 'cookie-refresh-token' },
       });
 
       authService.refresh.mockResolvedValue({
@@ -225,7 +226,7 @@ describe('AuthController', () => {
         'cookie-refresh-token',
       );
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'new-refresh-token',
         expect.any(Object),
       );
@@ -251,7 +252,7 @@ describe('AuthController', () => {
 
     it('should prioritize cookie token over body token', async () => {
       const req = mockRequest({
-        cookies: { refreshToken: 'cookie-token' },
+        cookies: { [REFRESH_COOKIE_NAME]: 'cookie-token' },
       });
 
       authService.refresh.mockResolvedValue({
@@ -288,7 +289,7 @@ describe('AuthController', () => {
 
     it('should set new refresh cookie after successful refresh', async () => {
       const req = mockRequest({
-        cookies: { refreshToken: 'old-token' },
+        cookies: { [REFRESH_COOKIE_NAME]: 'old-token' },
       });
 
       authService.refresh.mockResolvedValue({
@@ -301,7 +302,7 @@ describe('AuthController', () => {
       });
 
       expect(res.cookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         'new-refresh-token',
         expect.objectContaining({
           httpOnly: true,
@@ -337,7 +338,7 @@ describe('AuthController', () => {
 
     it('should logout using cookie token', async () => {
       const req = mockRequest({
-        cookies: { refreshToken: 'cookie-refresh-token' },
+        cookies: { [REFRESH_COOKIE_NAME]: 'cookie-refresh-token' },
       });
 
       await controller.logout(req, res as unknown as Response, {
@@ -348,7 +349,7 @@ describe('AuthController', () => {
         'cookie-refresh-token',
       );
       expect(res.clearCookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         expect.objectContaining({
           httpOnly: true,
           sameSite: 'lax',
@@ -372,7 +373,7 @@ describe('AuthController', () => {
 
     it('should prioritize cookie token over body token', async () => {
       const req = mockRequest({
-        cookies: { refreshToken: 'cookie-token' },
+        cookies: { [REFRESH_COOKIE_NAME]: 'cookie-token' },
       });
 
       await controller.logout(req, res as unknown as Response, {
@@ -395,7 +396,7 @@ describe('AuthController', () => {
       });
 
       expect(jest.spyOn(authService, 'logout')).not.toHaveBeenCalled();
-      expect(res.clearCookie).toHaveBeenCalledWith('refreshToken', {
+      expect(res.clearCookie).toHaveBeenCalledWith(REFRESH_COOKIE_NAME, {
         httpOnly: true,
         secure: false,
         sameSite: 'lax',
@@ -416,7 +417,7 @@ describe('AuthController', () => {
       });
 
       expect(res.clearCookie).toHaveBeenCalledWith(
-        'refreshToken',
+        REFRESH_COOKIE_NAME,
         expect.objectContaining({
           secure: true,
         }),
