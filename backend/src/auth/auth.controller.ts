@@ -50,6 +50,10 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponseDTO> {
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     const { accessToken, refreshToken } = await this.authService.login(
       req.user,
     );
@@ -75,6 +79,10 @@ export class AuthController {
   @Serialize(RegisterResponseDTO)
   @ApiGetMe()
   getProfile(@Req() req: AuthenticatedRequest) {
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     return req.user;
   }
 
