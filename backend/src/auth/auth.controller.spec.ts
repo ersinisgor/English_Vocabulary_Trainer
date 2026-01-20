@@ -4,24 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
-// import { ResponseLike } from 'test/utils/mock-response';
 import { AuthenticatedRequest } from './types/interfaces/authenticated-request.interface';
-
 import { mockRequest } from '../../test/utils/mock-request';
-import { mockUser } from 'test/utils/mock-user';
-import { mockResponse } from 'test/utils/mock-response';
+import { mockUser } from '../../test/utils/mock-user';
+import { mockResponse } from '../../test/utils/mock-response';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
   let configService: jest.Mocked<ConfigService>;
-
-  // function mockResponse(): Response {
-  //   return {
-  //     cookie: jest.fn(),
-  //     clearCookie: jest.fn(),
-  //   } as Partial<Response> as Response;
-  // }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,7 +60,6 @@ describe('AuthController', () => {
         user: mockUser,
       } as AuthenticatedRequest;
       const res = mockResponse();
-      // const cookieMock = res.cookie as jest.Mock;
 
       authService.login.mockResolvedValue({
         accessToken: 'access-token',
@@ -102,7 +92,6 @@ describe('AuthController', () => {
 
       const req = { user: mockUser } as AuthenticatedRequest;
       const res = mockResponse();
-      // const cookieMock = res.cookie as jest.Mock;
 
       authService.login.mockResolvedValue({
         accessToken: 'access-token',
