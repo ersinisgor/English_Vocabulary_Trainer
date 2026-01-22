@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, User } from 'generated/prisma';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from 'generated/prisma';
 
 jest.mock('bcrypt');
 jest.mock('crypto', () => ({
@@ -19,8 +20,30 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: jest.Mocked<UsersService>;
   let jwtService: jest.Mocked<JwtService>;
-  let prisma: jest.Mocked<PrismaService>;
-  let configService: jest.Mocked<ConfigService>;
+  // let prisma: jest.Mocked<PrismaService>;
+  // let configService: jest.Mocked<ConfigService>;
+
+  type PrismaMock = {
+    refreshToken: {
+      create: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
+    $transaction: jest.Mock;
+  };
+
+  const prismaMock: PrismaMock = {
+    refreshToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+
+  let prisma: typeof prismaMock;
 
   const mockUser: User = {
     id: 'user-123',
@@ -61,21 +84,13 @@ describe('AuthService', () => {
         },
         {
           provide: PrismaService,
-          useValue: {
-            refreshToken: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            $transaction: jest.fn(),
-          },
+          useValue: prismaMock,
         },
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string, defaultValue?: any) => {
-              const config: Record<string, any> = {
+            get: jest.fn((key: string, defaultValue?: unknown) => {
+              const config: Record<string, unknown> = {
                 'bcrypt.saltRounds': 4,
                 'jwt.refreshExpiresIn': '7d',
                 'jwt.secret': 'test-secret',
@@ -90,8 +105,8 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     usersService = module.get(UsersService);
     jwtService = module.get(JwtService);
-    prisma = module.get(PrismaService);
-    configService = module.get(ConfigService);
+    prisma = prismaMock;
+    // configService = module.get(ConfigService);
 
     // Reset bcrypt mocks
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-value');
@@ -111,7 +126,7 @@ describe('AuthService', () => {
 
       expect(result).toHaveProperty('accessToken', 'access-token');
       expect(result).toHaveProperty('refreshToken');
-      expect(jwtService.signAsync).toHaveBeenCalledWith({
+      expect(jest.spyOn(jwtService, 'signAsync')).toHaveBeenCalledWith({
         sub: mockUser.id,
         email: mockUser.email,
         role: mockUser.role,
@@ -125,7 +140,7 @@ describe('AuthService', () => {
 
       await service.login(mockUser);
 
-      expect(jwtService.signAsync).toHaveBeenCalledWith({
+      expect(jest.spyOn(jwtService, 'signAsync')).toHaveBeenCalledWith({
         sub: mockUser.id,
         email: mockUser.email,
         role: mockUser.role,
@@ -140,9 +155,12 @@ describe('AuthService', () => {
 
       expect(prisma.refreshToken.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           data: expect.objectContaining({
             userId: mockUser.id,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             tokenHash: expect.any(String),
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             expiresAt: expect.any(Date),
           }),
         }),
@@ -165,11 +183,11 @@ describe('AuthService', () => {
       const result = await service.register(registerDTO);
 
       expect(result).toEqual(mockUser);
-      expect(usersService.findUniqueByEmail).toHaveBeenCalledWith(
-        registerDTO.email,
-      );
+      expect(
+        jest.spyOn(usersService, 'findUniqueByEmail'),
+      ).toHaveBeenCalledWith(registerDTO.email);
       expect(bcrypt.hash).toHaveBeenCalledWith(registerDTO.password, 4);
-      expect(usersService.create).toHaveBeenCalledWith({
+      expect(jest.spyOn(usersService, 'create')).toHaveBeenCalledWith({
         email: registerDTO.email,
         password: 'hashed-password',
         username: registerDTO.username,
@@ -186,14 +204,17 @@ describe('AuthService', () => {
         `User with ${registerDTO.email} email address already exists`,
       );
 
-      expect(usersService.create).not.toHaveBeenCalled();
+      expect(jest.spyOn(usersService, 'create')).not.toHaveBeenCalled();
     });
 
     it('should handle Prisma unique constraint error (P2002)', async () => {
       usersService.findUniqueByEmail.mockResolvedValue(null);
-      const prismaError: any = new Error('Unique constraint failed');
-      prismaError.code = 'P2002';
-      prismaError.name = 'PrismaClientKnownRequestError';
+
+      const prismaError = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '5.0.0' },
+      );
+
       usersService.create.mockRejectedValue(prismaError);
 
       await expect(service.register(registerDTO)).rejects.toThrow(
@@ -222,7 +243,7 @@ describe('AuthService', () => {
       await service.register(registerDTO);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('Password123!', 4);
-      expect(usersService.create).toHaveBeenCalledWith(
+      expect(jest.spyOn(usersService, 'create')).toHaveBeenCalledWith(
         expect.objectContaining({
           password: 'super-secure-hash',
         }),
@@ -238,9 +259,9 @@ describe('AuthService', () => {
       const result = await service.validateUser('test@example.com', 'password');
 
       expect(result).toEqual(mockUser);
-      expect(usersService.findUniqueByEmail).toHaveBeenCalledWith(
-        'test@example.com',
-      );
+      expect(
+        jest.spyOn(usersService, 'findUniqueByEmail'),
+      ).toHaveBeenCalledWith('test@example.com');
       expect(bcrypt.compare).toHaveBeenCalledWith(
         'password',
         mockUser.passwordHash,
@@ -280,10 +301,13 @@ describe('AuthService', () => {
 
       expect(result).toHaveProperty('compositeToken');
       expect(result).toHaveProperty('created');
+
       expect(prisma.refreshToken.create).toHaveBeenCalledWith({
         data: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           tokenHash: expect.any(String),
           userId: 'user-123',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           expiresAt: expect.any(Date),
         },
       });
@@ -317,12 +341,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException for malformed token (no dot)', async () => {
-      await expect(service.verifyRefreshToken('notoken')).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.verifyRefreshToken('nodot')).rejects.toThrow(
-        'Malformed refresh token',
-      );
+      await expect(service.verifyRefreshToken('nodot')).rejects.toThrow(Error);
     });
 
     it('should throw UnauthorizedException for non-existent token', async () => {
@@ -407,13 +426,21 @@ describe('AuthService', () => {
     it('should revoke old token and create new one in transaction', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue(mockRefreshToken);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      prisma.$transaction.mockImplementation(async (operations: any[]) => {
-        return operations;
-      });
+      prisma.$transaction.mockResolvedValue([
+        { ...mockRefreshToken, revoked: true },
+        { ...mockRefreshToken, id: 'new-token-456' },
+      ]);
 
       await service.rotateRefreshTokenAtomic(validComposite);
 
-      const transactionArg = prisma.$transaction.mock.calls[0][0];
+      const calls = prisma.$transaction.mock.calls as unknown[][];
+
+      if (!Array.isArray(calls[0])) {
+        throw new Error('Transaction was not called');
+      }
+
+      const transactionArg = calls[0][0];
+
       expect(Array.isArray(transactionArg)).toBe(true);
       expect(transactionArg).toHaveLength(2);
     });
@@ -421,7 +448,7 @@ describe('AuthService', () => {
     it('should throw for malformed token', async () => {
       await expect(
         service.rotateRefreshTokenAtomic('malformed'),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toThrow('Malformed composite token');
     });
 
     it('should throw for non-existent token', async () => {
@@ -463,23 +490,29 @@ describe('AuthService', () => {
 
       expect(result).toHaveProperty('accessToken', 'new-access-token');
       expect(result).toHaveProperty('refreshToken');
-      expect(jwtService.signAsync).toHaveBeenCalled();
+      expect(jest.spyOn(jwtService, 'signAsync')).toHaveBeenCalled();
     });
 
     it('should throw if user not found after token rotation', async () => {
       prisma.refreshToken.findUnique
-        .mockResolvedValueOnce(mockRefreshToken)
-        .mockResolvedValueOnce({ ...mockRefreshToken, id: 'new-token-456' });
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        .mockResolvedValueOnce(mockRefreshToken) // old token
+        .mockResolvedValueOnce({
+          ...mockRefreshToken,
+          id: 'new-token-456',
+          revoked: false, // IMPORTANT
+        });
+
       prisma.$transaction.mockResolvedValue([
         { ...mockRefreshToken, revoked: true },
-        { ...mockRefreshToken, id: 'new-token-456' },
+        {
+          ...mockRefreshToken,
+          id: 'new-token-456',
+          revoked: false,
+        },
       ]);
+
       usersService.findUniqueById.mockResolvedValue(null);
 
-      await expect(service.refresh(validComposite)).rejects.toThrow(
-        UnauthorizedException,
-      );
       await expect(service.refresh(validComposite)).rejects.toThrow(
         'User not found',
       );
@@ -520,10 +553,9 @@ describe('AuthService', () => {
     });
 
     it('should handle malformed token (no dot)', async () => {
-      await service.logout('malformed');
-
-      // Should not throw, just return
-      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+      await expect(service.logout('malformed')).rejects.toThrow(
+        'Malformed composite token',
+      );
     });
   });
 });

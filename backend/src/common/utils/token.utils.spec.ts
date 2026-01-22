@@ -1,7 +1,4 @@
-import {
-  composeRefreshComposite,
-  parseRefreshComposite,
-} from './token.utils';
+import { composeRefreshComposite, parseRefreshComposite } from './token.utils';
 
 describe('Token Utils', () => {
   describe('composeRefreshComposite', () => {
@@ -59,12 +56,13 @@ describe('Token Utils', () => {
     });
 
     it('should throw error for null/undefined composite token', () => {
-      expect(() => parseRefreshComposite(null as any)).toThrow(
+      expect(() => parseRefreshComposite(null as unknown as string)).toThrow(
         'No composite token provided',
       );
-      expect(() => parseRefreshComposite(undefined as any)).toThrow(
-        'No composite token provided',
-      );
+
+      expect(() =>
+        parseRefreshComposite(undefined as unknown as string),
+      ).toThrow('No composite token provided');
     });
 
     it('should throw error for malformed token (no dot)', () => {
