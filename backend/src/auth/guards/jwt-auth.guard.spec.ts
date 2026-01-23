@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -31,28 +32,36 @@ describe('JwtAuthGuard', () => {
     jest.clearAllMocks();
   });
 
-  const createMockExecutionContext = (
-    isPublic: boolean = false,
-  ): ExecutionContext => {
+  const createMockExecutionContext = (): ExecutionContext => {
+    const mockRequest = {
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
+    };
+
+    const mockResponse = {};
+
     return {
       getHandler: jest.fn(),
       getClass: jest.fn(),
+      getArgs: jest.fn(),
+      getArgByIndex: jest.fn(),
       switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue({
-          headers: {
-            authorization: 'Bearer valid-token',
-          },
-        }),
+        getRequest: jest.fn().mockReturnValue(mockRequest),
+        getResponse: jest.fn().mockReturnValue(mockResponse),
       }),
-    } as any;
+      switchToRpc: jest.fn(),
+      switchToWs: jest.fn(),
+      getType: jest.fn().mockReturnValue('http'),
+    } as ExecutionContext;
   };
 
   describe('canActivate', () => {
     it('should return true for public routes', async () => {
       reflector.getAllAndOverride.mockReturnValue(true);
-      const context = createMockExecutionContext(true);
+      const context = createMockExecutionContext();
 
-      const result = guard.canActivate(context);
+      const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
       expect(reflector.getAllAndOverride).toHaveBeenCalledWith(IS_PUBLIC_KEY, [
@@ -63,16 +72,16 @@ describe('JwtAuthGuard', () => {
 
     it('should call super.canActivate for protected routes', async () => {
       reflector.getAllAndOverride.mockReturnValue(false);
-      const context = createMockExecutionContext(false);
+      const context = createMockExecutionContext();
 
       // Mock the parent class method
       const superCanActivate = jest.spyOn(
         Object.getPrototypeOf(JwtAuthGuard.prototype),
         'canActivate',
       );
-      superCanActivate.mockReturnValue(true as any);
+      superCanActivate.mockResolvedValue(true);
 
-      const result = guard.canActivate(context);
+      await guard.canActivate(context);
 
       expect(reflector.getAllAndOverride).toHaveBeenCalledWith(IS_PUBLIC_KEY, [
         context.getHandler(),
@@ -83,7 +92,7 @@ describe('JwtAuthGuard', () => {
       superCanActivate.mockRestore();
     });
 
-    it('should check metadata on both handler and class', () => {
+    it('should check metadata on both handler and class', async () => {
       reflector.getAllAndOverride.mockReturnValue(false);
       const context = createMockExecutionContext();
       const handler = jest.fn();
@@ -92,29 +101,33 @@ describe('JwtAuthGuard', () => {
       context.getHandler = jest.fn().mockReturnValue(handler);
       context.getClass = jest.fn().mockReturnValue(classType);
 
-      try {
-        guard.canActivate(context);
-      } catch (e) {
-        // May throw if super.canActivate is not properly mocked
-      }
+      const superCanActivate = jest.spyOn(
+        Object.getPrototypeOf(JwtAuthGuard.prototype),
+        'canActivate',
+      );
+      superCanActivate.mockResolvedValue(true);
+
+      await guard.canActivate(context);
 
       expect(reflector.getAllAndOverride).toHaveBeenCalledWith(IS_PUBLIC_KEY, [
         handler,
         classType,
       ]);
+
+      superCanActivate.mockRestore();
     });
 
-    it('should prioritize public metadata when set to true', () => {
+    it('should prioritize public metadata when set to true', async () => {
       reflector.getAllAndOverride.mockReturnValue(true);
       const context = createMockExecutionContext();
 
-      const result = guard.canActivate(context);
+      const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
       // Should not call parent canActivate when public
     });
 
-    it('should handle undefined public metadata (not public)', () => {
+    it('should handle undefined public metadata (not public)', async () => {
       reflector.getAllAndOverride.mockReturnValue(undefined);
       const context = createMockExecutionContext();
 
@@ -122,16 +135,16 @@ describe('JwtAuthGuard', () => {
         Object.getPrototypeOf(JwtAuthGuard.prototype),
         'canActivate',
       );
-      superCanActivate.mockReturnValue(true as any);
+      superCanActivate.mockResolvedValue(true);
 
-      guard.canActivate(context);
+      await guard.canActivate(context);
 
       expect(superCanActivate).toHaveBeenCalled();
 
       superCanActivate.mockRestore();
     });
 
-    it('should handle null public metadata (not public)', () => {
+    it('should handle null public metadata (not public)', async () => {
       reflector.getAllAndOverride.mockReturnValue(null);
       const context = createMockExecutionContext();
 
@@ -139,16 +152,16 @@ describe('JwtAuthGuard', () => {
         Object.getPrototypeOf(JwtAuthGuard.prototype),
         'canActivate',
       );
-      superCanActivate.mockReturnValue(true as any);
+      superCanActivate.mockResolvedValue(true);
 
-      guard.canActivate(context);
+      await guard.canActivate(context);
 
       expect(superCanActivate).toHaveBeenCalled();
 
       superCanActivate.mockRestore();
     });
 
-    it('should handle false public metadata (not public)', () => {
+    it('should handle false public metadata (not public)', async () => {
       reflector.getAllAndOverride.mockReturnValue(false);
       const context = createMockExecutionContext();
 
@@ -156,9 +169,9 @@ describe('JwtAuthGuard', () => {
         Object.getPrototypeOf(JwtAuthGuard.prototype),
         'canActivate',
       );
-      superCanActivate.mockReturnValue(true as any);
+      superCanActivate.mockResolvedValue(true);
 
-      guard.canActivate(context);
+      await guard.canActivate(context);
 
       expect(superCanActivate).toHaveBeenCalled();
 
@@ -167,12 +180,12 @@ describe('JwtAuthGuard', () => {
   });
 
   describe('metadata priority', () => {
-    it('should use getAllAndOverride which prioritizes closest metadata', () => {
+    it('should use getAllAndOverride which prioritizes closest metadata', async () => {
       // getAllAndOverride gets metadata from handler first, then class
       const context = createMockExecutionContext();
       reflector.getAllAndOverride.mockReturnValue(true);
 
-      guard.canActivate(context);
+      await guard.canActivate(context);
 
       expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
         IS_PUBLIC_KEY,
@@ -185,7 +198,7 @@ describe('JwtAuthGuard', () => {
     it('should extend AuthGuard with jwt strategy', () => {
       // JwtAuthGuard extends AuthGuard('jwt')
       expect(guard).toBeDefined();
-      expect(guard.canActivate).toBeDefined();
+      expect(typeof guard.canActivate).toBe('function');
     });
   });
 });
