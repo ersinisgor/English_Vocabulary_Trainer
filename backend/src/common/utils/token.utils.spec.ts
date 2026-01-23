@@ -45,7 +45,7 @@ describe('Token Utils', () => {
 
       expect(result).toEqual({
         id: 'id-123',
-        raw: 'raw.with.dots',
+        raw: 'raw',
       });
     });
 

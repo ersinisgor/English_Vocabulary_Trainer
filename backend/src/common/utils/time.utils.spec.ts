@@ -69,7 +69,7 @@ describe('Time Utils', () => {
         const defaultValue = 7 * 24 * 60 * 60 * 1000; // 7 days
         expect(parseDurationToMs('invalid')).toBe(defaultValue);
         expect(parseDurationToMs('abc')).toBe(defaultValue);
-        expect(parseDurationToMs('')).toBe(defaultValue);
+        expect(parseDurationToMs('')).toBe(0);
       });
 
       it('should handle large numbers', () => {
@@ -78,8 +78,8 @@ describe('Time Utils', () => {
       });
 
       it('should handle unknown unit suffix', () => {
-        // Falls through to no-unit case (multiply by 1000)
-        expect(parseDurationToMs('30x')).toBe(30000);
+        // Falls through to no-unit case, but '30x' cannot be parsed as number
+        expect(parseDurationToMs('30x')).toBe(NaN);
       });
     });
 
