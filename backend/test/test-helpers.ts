@@ -101,11 +101,11 @@ export function extractRefreshTokenFromCookie(
   if (!cookies) return undefined;
 
   const refreshCookie = cookies.find((cookie) =>
-    cookie.startsWith('refreshToken='),
+    cookie.startsWith('refresh_token='),
   );
   if (!refreshCookie) return undefined;
 
-  const match = refreshCookie.match(/refreshToken=([^;]+)/);
+  const match = refreshCookie.match(/refresh_token=([^;]+)/);
   return match ? match[1] : undefined;
 }
 
