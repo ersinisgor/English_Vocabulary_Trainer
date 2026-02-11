@@ -1,12 +1,12 @@
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import * as bcrypt from 'bcrypt';
 import { PrismaClient, Role, User } from '../generated/prisma';
 
 export interface TestUser {
   id: string;
   email: string;
-  username: string;
+  username: string | null;
   password: string; // plain text
   passwordHash: string;
   role: Role;
@@ -56,7 +56,7 @@ export async function loginTestUser(
     .send({ email, password })
     .expect(200);
 
-  const cookies = response.headers['set-cookie'] as string[];
+  const cookies = response.headers['set-cookie'] as unknown as string[];
   const refreshTokenFromCookie = extractRefreshTokenFromCookie(cookies);
 
   return {

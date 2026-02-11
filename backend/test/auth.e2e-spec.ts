@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import * as cookieParser from 'cookie-parser';
+import request from 'supertest';
+import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 import { TestDbSetup } from './test-db-setup';
 import {
@@ -177,7 +177,7 @@ describe('Auth E2E Tests', () => {
       expect(typeof response.body.accessToken).toBe('string');
 
       // Check refresh token cookie
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
       expect(refreshCookie).toBeDefined();
@@ -216,7 +216,7 @@ describe('Auth E2E Tests', () => {
         })
         .expect(200);
 
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
 
       expect(refreshCookie).toContain('HttpOnly');
@@ -355,7 +355,7 @@ describe('Auth E2E Tests', () => {
       expect(typeof response.body.accessToken).toBe('string');
 
       // Should set new refresh cookie
-      const newCookies = response.headers['set-cookie'] as string[];
+      const newCookies = response.headers['set-cookie'] as unknown as string[];
       expect(newCookies).toBeDefined();
       const newRefreshCookie = newCookies.find((c) =>
         c.startsWith('refreshToken='),
@@ -522,7 +522,7 @@ describe('Auth E2E Tests', () => {
         .set('Cookie', cookies)
         .expect(204);
 
-      const setCookies = response.headers['set-cookie'] as string[];
+      const setCookies = response.headers['set-cookie'] as unknown as string[];
       const clearedCookie = setCookies?.find((c) =>
         c.startsWith('refreshToken='),
       );
@@ -587,7 +587,7 @@ describe('Auth E2E Tests', () => {
         })
         .expect(200);
 
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
 
       expect(refreshCookie).toContain('HttpOnly');
@@ -602,7 +602,7 @@ describe('Auth E2E Tests', () => {
         })
         .expect(200);
 
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
 
       expect(refreshCookie).toContain('SameSite=Lax');
@@ -617,7 +617,7 @@ describe('Auth E2E Tests', () => {
         })
         .expect(200);
 
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
 
       expect(refreshCookie).toContain('Path=/');
@@ -632,7 +632,7 @@ describe('Auth E2E Tests', () => {
         })
         .expect(200);
 
-      const cookies = response.headers['set-cookie'] as string[];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       const refreshCookie = cookies.find((c) => c.startsWith('refreshToken='));
 
       // Should have Max-Age set (1 day in test config = 86400 seconds)
@@ -663,7 +663,7 @@ describe('Auth E2E Tests', () => {
         .set('Cookie', firstCookies)
         .expect(200);
 
-      const secondCookies = firstRefresh.headers['set-cookie'] as string[];
+      const secondCookies = firstRefresh.headers['set-cookie'] as unknown as string[];
       const secondRefreshToken = extractRefreshTokenFromCookie(secondCookies);
 
       expect(secondRefreshToken).toBeDefined();
@@ -675,7 +675,7 @@ describe('Auth E2E Tests', () => {
         .set('Cookie', secondCookies)
         .expect(200);
 
-      const thirdCookies = secondRefresh.headers['set-cookie'] as string[];
+      const thirdCookies = secondRefresh.headers['set-cookie'] as unknown as string[];
       const thirdRefreshToken = extractRefreshTokenFromCookie(thirdCookies);
 
       expect(thirdRefreshToken).not.toBe(secondRefreshToken);
@@ -731,7 +731,7 @@ describe('Auth E2E Tests', () => {
         expect(meResponse.body.id).toBe(testUser.id);
 
         // Update cookies for next iteration
-        currentCookies = response.headers['set-cookie'] as string[];
+        currentCookies = response.headers['set-cookie'] as unknown as string[];
       }
     });
   });
@@ -760,7 +760,7 @@ describe('Auth E2E Tests', () => {
         .expect(200);
 
       const accessToken = loginResponse.body.accessToken;
-      const cookies = loginResponse.headers['set-cookie'] as string[];
+      const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
 
       // 3. Access protected route
       const meResponse = await request(app.getHttpServer())
@@ -785,7 +785,7 @@ describe('Auth E2E Tests', () => {
         .expect(200);
 
       // 6. Logout
-      const newCookies = refreshResponse.headers['set-cookie'] as string[];
+      const newCookies = refreshResponse.headers['set-cookie'] as unknown as string[];
       await request(app.getHttpServer())
         .post('/api/v1/auth/logout')
         .set('Cookie', newCookies)

@@ -7,6 +7,8 @@ import { TestDbSetup } from './test-db-setup';
 import { createTestUser, loginTestUser } from './test-helpers';
 import { PartOfSpeech, WordLevel } from '../generated/prisma';
 import { Server } from 'http';
+import { Reflector } from '@nestjs/core';
+import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 
 interface WordResponse {
   id: string;
@@ -30,8 +32,11 @@ describe('Words E2E', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
+    const reflector = app.get(Reflector);
+    app.useGlobalGuards(new JwtAuthGuard(reflector));
     app.setGlobalPrefix('api/v1');
     await app.init();
+
 
     httpServer = app.getHttpServer() as Server;
     prisma = TestDbSetup.getPrismaClient();
@@ -91,8 +96,13 @@ describe('Words E2E', () => {
   });
 
   it('PATCH /words/:id', async () => {
-    const word = await prisma.word.findFirst();
-    expect(word).not.toBeNull();
+    const word = await prisma.word.create({
+      data: {
+        word: 'test',
+        partOfSpeech: PartOfSpeech.NOUN,
+        userId: (await prisma.user.findFirst())!.id,
+      },
+    });
 
     const res = await request(httpServer)
       .patch(`/api/v1/words/${word!.id}`)
@@ -106,7 +116,13 @@ describe('Words E2E', () => {
   });
 
   it('DELETE /words/:id', async () => {
-    const word = await prisma.word.findFirst();
+    const word = await prisma.word.create({
+      data: {
+        word: 'test',
+        partOfSpeech: PartOfSpeech.NOUN,
+        userId: (await prisma.user.findFirst())!.id,
+      },
+    });
 
     await request(httpServer)
       .delete(`/api/v1/words/${word!.id}`)
