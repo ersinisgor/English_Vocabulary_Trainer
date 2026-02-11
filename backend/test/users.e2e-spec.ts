@@ -7,6 +7,8 @@ import { AppModule } from '../src/app.module';
 import { TestDbSetup } from './test-db-setup';
 import { createTestUser, loginTestUser } from './test-helpers';
 import { Role } from '../generated/prisma';
+import { Reflector } from '@nestjs/core';
+import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 
 let httpServer: Server;
 
@@ -34,6 +36,8 @@ describe('Users E2E', () => {
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+    const reflector = app.get(Reflector);
+    app.useGlobalGuards(new JwtAuthGuard(reflector));
     app.setGlobalPrefix('api/v1');
     await app.init();
 
