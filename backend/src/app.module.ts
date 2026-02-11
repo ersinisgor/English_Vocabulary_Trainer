@@ -13,6 +13,7 @@ import validationSchema from './config/validation';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
       load: [configuration],
       validationSchema,
     }),

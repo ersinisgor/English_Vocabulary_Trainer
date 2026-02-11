@@ -3,7 +3,8 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 // Load test environment variables
-dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
+dotenv.config({ path: path.resolve(__dirname, '../.env.test'), override: true });
+
 
 // Global setup before all tests
 beforeAll(async () => {
