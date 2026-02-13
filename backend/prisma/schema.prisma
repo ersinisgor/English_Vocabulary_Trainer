@@ -265,7 +265,7 @@ model UserWordState {
   userId       String  @map("user_id")
   wordId       String  @map("word_id")
   isStarred      Boolean @default(false) @map("is_starred")
-  keepLearning Boolean @default(false) @map("keep_learning")
+  keepLearning Boolean @default(true) @map("keep_learning")
 
   correctCount Int @default(0) @map("correct_count")
   wrongCount Int @default(0) @map("wrong_count")
@@ -278,6 +278,10 @@ model UserWordState {
   firstReviewAt DateTime? @map("first_review_at")
   lastReviewedAt DateTime? @map("last_review_at")
   nextReviewAt DateTime? @map("next_review_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
