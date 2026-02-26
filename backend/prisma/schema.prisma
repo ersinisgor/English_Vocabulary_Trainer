@@ -30,6 +30,7 @@ enum PartOfSpeech {
   ADVERB
   PHRASAL_VERB
   IDIOM
+  EXPRESSION
 }
 
 enum WordLevel {
@@ -72,7 +73,7 @@ model User {
 
   words         Word[]
   refreshTokens RefreshToken[]
-  userSentences UserSentence[]
+  userGeneratedSentences UserGeneratedSentence[]
   wordStates    UserWordState[]
 }
 
@@ -101,7 +102,7 @@ model Word {
   antonyms      Antonym[]
   relatedWords  RelatedWord[]
   userStates    UserWordState[]
-  userSentences UserSentence[]
+  userGeneratedSentences UserGeneratedSentence[]
 
   @@unique([userId, word, partOfSpeech], name: "user_word_partOfSpeech")
   @@index([userId])
@@ -116,26 +117,24 @@ model Word {
 model WordMeaning {
   id                String   @id @default(cuid())
   wordId            String   @map("word_id")
-  isPrimaryMeaning  Boolean  @default(false) @map("is_primary_meaning")
   meaningOrder      Int      @map("meaning_order")
-  englishDefinition String   @map("english_definition")
+  englishDefinition String?   @map("english_definition")
   nativeMeanings    String   @map("native_meanings") // raw string like "dikkat etmek / fark etmek"
   createdAt         DateTime @default(now()) @map("created_at")
 
   // Relations
   word             Word                    @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  splittedMeanings SplittedNativeMeaning[]
+  splittedNativeMeanings SplittedNativeMeanings[]
 
   @@index([wordId])
 }
 
-model SplittedNativeMeaning {
+model SplittedNativeMeanings {
   id          String   @id @default(cuid())
   meaningId   String   @map("meaning_id")
   meaningText String   @map("meaning_text")
-  isPrimary   Boolean  @default(false)
   order       Int
-  sideNotes   String[] @map("side_notes") // array of strings
+  sideNotes   String[] @map("side_notes") 
 
   meaning WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
 
@@ -149,12 +148,11 @@ model SplittedNativeMeaning {
 model ExampleSentence {
   id               String  @id @default(cuid())
   wordId           String  @map("word_id")
-  sentence         String
-  translation      String
-  clozeDeletedWord Boolean @map("cloze_deleted_word")
-  clozePosition    Int?    @map("cloze_position")
-  boldIndexes      Int[]   @map("bold_indexes")
-  highlightedWord  String  @map("highlighted_word")
+  sentence         String?
+  translation      String?
+  
+  clozeTemplate String?   // "I {{1}} that she {{2}} the mistake."
+  answers       String[]  // ["noticed", "noticed"]
 
   word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
@@ -165,14 +163,15 @@ model ExampleSentence {
 // USER-CREATED SENTENCES (PER USER)
 // ---------------------------------------------------------
 
-model UserSentence {
+model UserGeneratedSentence {
   id              String  @id @default(cuid())
   userId          String  @map("user_id")
   wordId          String  @map("word_id")
-  sentence        String
-  translation     String
-  hideWord        Boolean @default(false) @map("hide_word")
-  highlightedWord String  @map("highlighted_word")
+  sentence        String?
+  translation     String?
+  
+  clozeTemplate String?   // "I {{1}} that she {{2}} the mistake."
+  answers       String[]  // ["noticed", "noticed"]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
@@ -189,8 +188,8 @@ model WordMetadata {
   id     String @id @default(cuid())
   wordId String @unique @map("word_id")
 
-  pronunciation String  @map("pronunciation")
-  imageUrl      String  @map("image_url")
+  pronunciation String?  @map("pronunciation")
+  imageUrl      String?  @map("image_url")
 
   // forms
   singularForm        String? @map("singular_form")
