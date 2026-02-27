@@ -1,5 +1,11 @@
 import { PartOfSpeech, WordLevel } from 'generated/prisma';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateWordDTO {
   @IsString()
@@ -12,4 +18,8 @@ export class CreateWordDTO {
 
   @IsEnum(PartOfSpeech)
   partOfSpeech: PartOfSpeech;
+
+  @IsOptional()
+  @IsNumber()
+  meaningOrder?: number;
 }

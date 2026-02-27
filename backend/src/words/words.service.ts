@@ -22,10 +22,11 @@ export class WordsService {
 
     const existing = await this.prisma.word.findUnique({
       where: {
-        user_word_partOfSpeech: {
+        user_word_partOfSpeech_meaningOrder: {
           userId,
           word: normalizedWord,
           partOfSpeech,
+          meaningOrder: 1, // Default meaningOrder for duplicate check
         },
       },
     });
@@ -113,21 +114,23 @@ export class WordsService {
     const normalizedWord = dto.word ? normalizeWord(dto.word) : existing.word;
 
     const newPartOfSpeech = dto.partOfSpeech ?? existing.partOfSpeech;
+    const newMeaningOrder = dto.meaningOrder ?? existing.meaningOrder ?? 1;
 
-    if (dto.word || dto.partOfSpeech) {
+    if (dto.word || dto.partOfSpeech || dto.meaningOrder) {
       const conflict = await this.prisma.word.findUnique({
         where: {
-          user_word_partOfSpeech: {
+          user_word_partOfSpeech_meaningOrder: {
             userId,
             word: normalizedWord,
             partOfSpeech: newPartOfSpeech,
+            meaningOrder: newMeaningOrder,
           },
         },
       });
 
       if (conflict && conflict.id !== id) {
         throw new ConflictException(
-          `Another word "${normalizedWord}" with partOfSpeech "${newPartOfSpeech}" already exists.`,
+          `Another word "${normalizedWord}" with partOfSpeech "${newPartOfSpeech}" and meaningOrder "${newMeaningOrder}" already exists.`,
         );
       }
     }
