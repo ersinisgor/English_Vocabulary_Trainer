@@ -73,7 +73,6 @@ model User {
 
   words         Word[]
   refreshTokens RefreshToken[]
-  userGeneratedSentences UserGeneratedSentence[]
   wordStates    UserWordState[]
 }
 
@@ -86,6 +85,7 @@ model Word {
   word         String
   level        WordLevel?
   partOfSpeech PartOfSpeech @map("part_of_speech")
+  meaningOrder Int           @default(1) @map("meaning_order")
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -102,9 +102,8 @@ model Word {
   antonyms      Antonym[]
   relatedWords  RelatedWord[]
   userStates    UserWordState[]
-  userGeneratedSentences UserGeneratedSentence[]
 
-  @@unique([userId, word, partOfSpeech], name: "user_word_partOfSpeech")
+  @@unique([userId, word, partOfSpeech, meaningOrder], name: "user_word_partOfSpeech_meaningOrder")
   @@index([userId])
   @@index([userId, createdAt])
   @@index([userId, level, partOfSpeech])
@@ -117,7 +116,6 @@ model Word {
 model WordMeaning {
   id                String   @id @default(cuid())
   wordId            String   @map("word_id")
-  meaningOrder      Int      @map("meaning_order")
   englishDefinition String?   @map("english_definition")
   nativeMeanings    String   @map("native_meanings") // raw string like "dikkat etmek / fark etmek"
   createdAt         DateTime @default(now()) @map("created_at")
@@ -142,7 +140,7 @@ model SplittedNativeMeanings {
 }
 
 // ---------------------------------------------------------
-// EXAMPLE SENTENCES (SYSTEM-PROVIDED)
+// EXAMPLE SENTENCES
 // ---------------------------------------------------------
 
 model ExampleSentence {
@@ -150,35 +148,15 @@ model ExampleSentence {
   wordId           String  @map("word_id")
   sentence         String?
   translation      String?
-  
+
   clozeTemplate String?   // "I {{1}} that she {{2}} the mistake."
   answers       String[]  // ["noticed", "noticed"]
 
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+ word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
   @@index([wordId])
 }
 
-// ---------------------------------------------------------
-// USER-CREATED SENTENCES (PER USER)
-// ---------------------------------------------------------
-
-model UserGeneratedSentence {
-  id              String  @id @default(cuid())
-  userId          String  @map("user_id")
-  wordId          String  @map("word_id")
-  sentence        String?
-  translation     String?
-  
-  clozeTemplate String?   // "I {{1}} that she {{2}} the mistake."
-  answers       String[]  // ["noticed", "noticed"]
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([wordId])
-}
 
 // ---------------------------------------------------------
 // WORD METADATA
