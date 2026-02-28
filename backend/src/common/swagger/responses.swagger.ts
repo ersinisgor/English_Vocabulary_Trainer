@@ -166,3 +166,37 @@ export const WordConflictError = BaseErrorSchema(
   'Word already exists',
   'Conflict',
 );
+
+/* =====================================================
+ * IMPORT MODULE ERRORS
+ * ===================================================== */
+
+export const FileRequiredError = BaseErrorSchema(
+  400,
+  'File is required',
+  'Bad Request',
+);
+
+export const InvalidFileTypeError = BaseErrorSchema(
+  400,
+  'Invalid file type. Only Excel (.xlsx) and CSV files are allowed.',
+  'Bad Request',
+);
+
+export const MissingRequiredSheetsError = BaseErrorSchema(
+  400,
+  'Missing required sheets: Words-WordMeaning, ExampleSentence, WordTag',
+  'Bad Request',
+);
+
+export const InvalidPartOfSpeechError = BaseErrorSchema(
+  400,
+  'Invalid part of speech: XXX. Valid values: V, NOUN, ADJECTIVE, ADVERB, PHRASAL_VERB, IDIOM, EXPRESSION',
+  'Bad Request',
+);
+
+export const InvalidLevelError = BaseErrorSchema(
+  400,
+  'Invalid level: XXX. Valid values: A1, A2, B1, B2, C1, C2',
+  'Bad Request',
+);

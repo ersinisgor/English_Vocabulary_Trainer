@@ -8,3 +8,6 @@ export * from './users/users.schemas';
 
 export * from './words/words.swagger';
 export * from './words/words.schemas';
+
+export * from './import/import.swagger';
+export * from './import/import.schemas';
