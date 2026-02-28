@@ -1,5 +1,10 @@
 import * as XLSX from 'xlsx';
-import { ExcelData, WordSheetRow, ExampleSheetRow, TagSheetRow } from '../types/excel-data.interface';
+import {
+  ExcelData,
+  WordSheetRow,
+  ExampleSheetRow,
+  TagSheetRow,
+} from '../types/excel-data.interface';
 import { BadRequestException } from '@nestjs/common';
 
 export class ExcelParser {
@@ -42,7 +47,10 @@ export class ExcelParser {
   /**
    * Parse a single sheet to typed array
    */
-  private static parseSheet<T>(workbook: XLSX.WorkBook, sheetName: string): T[] {
+  private static parseSheet<T>(
+    workbook: XLSX.WorkBook,
+    sheetName: string,
+  ): T[] {
     const sheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json<T>(sheet);
 
