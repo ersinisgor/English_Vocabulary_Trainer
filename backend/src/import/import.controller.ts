@@ -1,4 +1,11 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Req,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
 import { AuthenticatedRequest } from 'src/auth/types/interfaces/authenticated-request.interface';
@@ -50,7 +57,7 @@ export class ImportController {
     }
 
     // Parse Excel file
-    const excelData = await this.importService.parseExcelFile(file.buffer);
+    const excelData = this.importService.parseExcelFile(file.buffer);
 
     // Import data
     const result = await this.importService.importFromExcel(

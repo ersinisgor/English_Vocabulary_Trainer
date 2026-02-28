@@ -13,7 +13,7 @@ export class ImportService {
   /**
    * Parse Excel file from buffer
    */
-  async parseExcelFile(buffer: Buffer): Promise<ExcelData> {
+  parseExcelFile(buffer: Buffer): ExcelData {
     const excelData = ExcelParser.parseExcelFile(buffer);
     ExcelParser.validateExcelData(excelData);
     return excelData;
@@ -66,7 +66,7 @@ export class ImportService {
                 wordId: word.id,
                 meaningOrder: row.meaning_order,
                 englishDefinition: row.english_definition,
-                nativeMeanings: row.native_meanings,
+                nativeMeanings: row.native_meanings || '',
               },
             });
             const key = `${wordNo}_${row.meaning_order}`;
@@ -74,7 +74,8 @@ export class ImportService {
             totalMeanings++;
 
             // Create Splitted Native Meanings
-            const parts = row.native_meanings.split('/');
+            const nativeMeanings = row.native_meanings || '';
+            const parts = nativeMeanings.split('/');
             for (let i = 0; i < parts.length; i++) {
               const trimmed = parts[i].trim();
               if (trimmed) {
@@ -115,7 +116,7 @@ export class ImportService {
         }
 
         // Extract cloze answers from {{word}} pattern
-        const answers = this.extractClozeAnswers(row.example_sentence);
+        const answers = this.extractClozeAnswers(row.example_sentence || '');
 
         try {
           await tx.exampleSentence.create({
@@ -163,7 +164,7 @@ export class ImportService {
         }
 
         // Clean tag name
-        const cleanTag = this.cleanTagName(row.name);
+        const cleanTag = this.cleanTagName(row.name || '');
 
         try {
           // Upsert tag
