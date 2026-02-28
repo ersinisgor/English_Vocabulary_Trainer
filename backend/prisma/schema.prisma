@@ -49,8 +49,9 @@ enum WordLevel {
 model RefreshToken {
   id        String   @id @default(cuid())
   tokenHash String   @map("token_hash")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now()) @map("created_at")
   revoked   Boolean  @default(false)
   expiresAt DateTime @map("expires_at")
@@ -68,24 +69,25 @@ model User {
   username     String?
   passwordHash String   @map("password_hash")
   role         Role     @default(USER)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  words         Word[]
-  refreshTokens RefreshToken[]
-  wordStates    UserWordState[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  words          Word[]
+  refreshTokens  RefreshToken[]
+  meaningStates  UserMeaningState[]
 }
 
 // ---------------------------------------------------------
-// WORD
+// WORD (Lexeme Level)
 // ---------------------------------------------------------
 
 model Word {
-  id           String       @id @default(cuid())
-  word         String
-  level        WordLevel?
-  partOfSpeech PartOfSpeech @map("part_of_speech")
-  meaningOrder Int           @default(1) @map("meaning_order")
+  id             String       @id @default(cuid())
+  word           String
+  level          WordLevel?
+  partOfSpeech   PartOfSpeech @map("part_of_speech")
+  pronunciation  String?
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -93,177 +95,130 @@ model Word {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // relations
-  meanings      WordMeaning[]
-  examples      ExampleSentence[]
-  metadata      WordMetadata?
-  tags          WordTag[]
-  synonyms      Synonym[]
-  antonyms      Antonym[]
-  relatedWords  RelatedWord[]
-  userStates    UserWordState[]
+  meanings WordMeaning[]
 
-  @@unique([userId, word, partOfSpeech, meaningOrder], name: "user_word_partOfSpeech_meaningOrder")
+  @@unique([userId, word, partOfSpeech])
   @@index([userId])
   @@index([userId, createdAt])
   @@index([userId, level, partOfSpeech])
 }
 
 // ---------------------------------------------------------
-// WORD MEANING
+// WORD MEANING (Sense Level)
 // ---------------------------------------------------------
 
 model WordMeaning {
   id                String   @id @default(cuid())
   wordId            String   @map("word_id")
-  englishDefinition String?   @map("english_definition")
-  nativeMeanings    String   @map("native_meanings") // raw string like "dikkat etmek / fark etmek"
-  createdAt         DateTime @default(now()) @map("created_at")
+  word              Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
-  // Relations
-  word             Word                    @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  splittedNativeMeanings SplittedNativeMeanings[]
+  meaningOrder      Int      @map("meaning_order")
+  englishDefinition String?  @map("english_definition")
+  nativeMeanings    String   @map("native_meanings")
+  createdAt DateTime @default(now()) @map("created_at")
 
+  examples     ExampleSentence[]
+  tags         WordMeaningTag[]
+  userStates   UserMeaningState[]
+  splittedNativeMeanings SplittedNativeMeaning[]
+
+  @@unique([wordId, meaningOrder])
   @@index([wordId])
 }
 
-model SplittedNativeMeanings {
+// ---------------------------------------------------------
+// SPLITTED NATIVE MEANINGS
+// ---------------------------------------------------------
+
+model SplittedNativeMeaning {
   id          String   @id @default(cuid())
   meaningId   String   @map("meaning_id")
+  meaning     WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
   meaningText String   @map("meaning_text")
   order       Int
-  sideNotes   String[] @map("side_notes") 
-
-  meaning WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
 
   @@index([meaningId])
 }
 
 // ---------------------------------------------------------
-// EXAMPLE SENTENCES
+// EXAMPLE SENTENCES (Meaning Level)
 // ---------------------------------------------------------
 
 model ExampleSentence {
-  id               String  @id @default(cuid())
-  wordId           String  @map("word_id")
-  sentence         String?
-  translation      String?
+  id          String  @id @default(cuid())
+  meaningId   String  @map("meaning_id")
+  meaning     WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
 
-  clozeTemplate String?   // "I {{1}} that she {{2}} the mistake."
-  answers       String[]  // ["noticed", "noticed"]
+  sentence     String?
+  translation  String?
+  clozeTemplate String?
+  answers       String[]
 
- word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-
-  @@index([wordId])
-}
-
-
-// ---------------------------------------------------------
-// WORD METADATA
-// ---------------------------------------------------------
-
-model WordMetadata {
-  id     String @id @default(cuid())
-  wordId String @unique @map("word_id")
-
-  pronunciation String?  @map("pronunciation")
-  imageUrl      String?  @map("image_url")
-
-  // forms
-  singularForm        String? @map("singular_form")
-  pluralForm          String? @map("plural_form")
-  possessiveForm      String? @map("possessive_form")
-  regularForms        String[] @map("regular_forms")
-  irregularV2         String? @map("irregular_v2")
-  irregularV3         String? @map("irregular_v3")
-  presentParticiple   String? @map("present_participle")
-  thirdPersonSingular String? @map("third_person_singular")
-  gerund              String? @map("gerund")
-  infinitive          String? @map("infinitive")
-
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  @@index([meaningId])
 }
 
 // ---------------------------------------------------------
-// TAGS (e.g., "B2", "Pre-Intermediate")
+// TAGS (Global Tag Dictionary)
 // ---------------------------------------------------------
 
 model Tag {
   id   String @id @default(cuid())
   name String @unique
 
-  words WordTag[]
-}
-
-model WordTag {
-  wordId String
-  tagId  String
-
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([wordId, tagId])
+  meanings WordMeaningTag[]
 }
 
 // ---------------------------------------------------------
-// SYNONYMS / ANTONYMS / RELATED WORDS
+// WORD MEANING TAG (Join Table)
 // ---------------------------------------------------------
 
-model Synonym {
-  id     String @id @default(cuid())
-  wordId String @map("word_id")
-  text   String
+model WordMeaningTag {
+  meaningId String
+  tagId     String
 
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-}
+  meaning WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+  tag     Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-model Antonym {
-  id     String @id @default(cuid())
-  wordId String @map("word_id")
-  text   String
-
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
-}
-
-model RelatedWord {
-  id     String @id @default(cuid())
-  wordId String @map("word_id")
-  text   String
-
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  @@id([meaningId, tagId])
+  @@index([tagId])
 }
 
 // ---------------------------------------------------------
-// USER-WORD STATE (star, keepLearning, etc.)
+// USER MEANING STATE (Spaced Repetition Per Meaning)
 // ---------------------------------------------------------
 
-model UserWordState {
-  id           String  @id @default(cuid())
-  userId       String  @map("user_id")
-  wordId       String  @map("word_id")
-  isStarred      Boolean @default(false) @map("is_starred")
-  keepLearning Boolean @default(true) @map("keep_learning")
+model UserMeaningState {
+  id        String @id @default(cuid())
 
-  correctCount Int @default(0) @map("correct_count")
-  wrongCount Int @default(0) @map("wrong_count")
-  practiceCount Int @default(0) @map("practice_count")
-  streakCount Int @default(0) @map("streak_count")
-  repetition Int @default(0) 
-  interval Int @default(0)
-  easeFactor Decimal @default(2.5) @map("ease_factor")
+  userId    String @map("user_id")
+  meaningId String @map("meaning_id")
 
-  firstReviewAt DateTime? @map("first_review_at")
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meaning  WordMeaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
+  isStarred    Boolean @default(false) @map("is_starred")
+  keepLearning Boolean @default(true)  @map("keep_learning")
+
+  correctCount   Int @default(0) @map("correct_count")
+  wrongCount     Int @default(0) @map("wrong_count")
+  practiceCount  Int @default(0) @map("practice_count")
+  streakCount    Int @default(0) @map("streak_count")
+
+  repetition Int @default(0)
+  interval   Int @default(0)
+
+  easeFactor Decimal @default(2.5) @db.Decimal(4,2) @map("ease_factor")
+
+  firstReviewAt  DateTime? @map("first_review_at")
   lastReviewedAt DateTime? @map("last_review_at")
-  nextReviewAt DateTime? @map("next_review_at")
+  nextReviewAt   DateTime? @map("next_review_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, meaningId])
   @@index([userId])
-  @@unique([userId, wordId])
   @@index([userId, isStarred])
   @@index([userId, keepLearning])
   @@index([userId, nextReviewAt])

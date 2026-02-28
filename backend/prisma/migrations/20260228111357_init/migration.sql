@@ -38,7 +38,7 @@ CREATE TABLE "Word" (
     "word" TEXT NOT NULL,
     "level" "WordLevel",
     "part_of_speech" "PartOfSpeech" NOT NULL,
-    "meaning_order" INTEGER NOT NULL DEFAULT 1,
+    "pronunciation" TEXT,
     "user_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -50,6 +50,7 @@ CREATE TABLE "Word" (
 CREATE TABLE "WordMeaning" (
     "id" TEXT NOT NULL,
     "word_id" TEXT NOT NULL,
+    "meaning_order" INTEGER NOT NULL,
     "english_definition" TEXT,
     "native_meanings" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -58,46 +59,25 @@ CREATE TABLE "WordMeaning" (
 );
 
 -- CreateTable
-CREATE TABLE "SplittedNativeMeanings" (
+CREATE TABLE "SplittedNativeMeaning" (
     "id" TEXT NOT NULL,
     "meaning_id" TEXT NOT NULL,
     "meaning_text" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
-    "side_notes" TEXT[],
 
-    CONSTRAINT "SplittedNativeMeanings_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SplittedNativeMeaning_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "ExampleSentence" (
     "id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
+    "meaning_id" TEXT NOT NULL,
     "sentence" TEXT,
     "translation" TEXT,
     "clozeTemplate" TEXT,
     "answers" TEXT[],
 
     CONSTRAINT "ExampleSentence_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "WordMetadata" (
-    "id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
-    "pronunciation" TEXT,
-    "image_url" TEXT,
-    "singular_form" TEXT,
-    "plural_form" TEXT,
-    "possessive_form" TEXT,
-    "regular_forms" TEXT[],
-    "irregular_v2" TEXT,
-    "irregular_v3" TEXT,
-    "present_participle" TEXT,
-    "third_person_singular" TEXT,
-    "gerund" TEXT,
-    "infinitive" TEXT,
-
-    CONSTRAINT "WordMetadata_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -109,45 +89,18 @@ CREATE TABLE "Tag" (
 );
 
 -- CreateTable
-CREATE TABLE "WordTag" (
-    "wordId" TEXT NOT NULL,
+CREATE TABLE "WordMeaningTag" (
+    "meaningId" TEXT NOT NULL,
     "tagId" TEXT NOT NULL,
 
-    CONSTRAINT "WordTag_pkey" PRIMARY KEY ("wordId","tagId")
+    CONSTRAINT "WordMeaningTag_pkey" PRIMARY KEY ("meaningId","tagId")
 );
 
 -- CreateTable
-CREATE TABLE "Synonym" (
-    "id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-
-    CONSTRAINT "Synonym_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Antonym" (
-    "id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-
-    CONSTRAINT "Antonym_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "RelatedWord" (
-    "id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-
-    CONSTRAINT "RelatedWord_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "UserWordState" (
+CREATE TABLE "UserMeaningState" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
-    "word_id" TEXT NOT NULL,
+    "meaning_id" TEXT NOT NULL,
     "is_starred" BOOLEAN NOT NULL DEFAULT false,
     "keep_learning" BOOLEAN NOT NULL DEFAULT true,
     "correct_count" INTEGER NOT NULL DEFAULT 0,
@@ -156,14 +109,14 @@ CREATE TABLE "UserWordState" (
     "streak_count" INTEGER NOT NULL DEFAULT 0,
     "repetition" INTEGER NOT NULL DEFAULT 0,
     "interval" INTEGER NOT NULL DEFAULT 0,
-    "ease_factor" DECIMAL(65,30) NOT NULL DEFAULT 2.5,
+    "ease_factor" DECIMAL(4,2) NOT NULL DEFAULT 2.5,
     "first_review_at" TIMESTAMP(3),
     "last_review_at" TIMESTAMP(3),
     "next_review_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "UserWordState_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "UserMeaningState_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -182,37 +135,40 @@ CREATE INDEX "Word_user_id_created_at_idx" ON "Word"("user_id", "created_at");
 CREATE INDEX "Word_user_id_level_part_of_speech_idx" ON "Word"("user_id", "level", "part_of_speech");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Word_user_id_word_part_of_speech_meaning_order_key" ON "Word"("user_id", "word", "part_of_speech", "meaning_order");
+CREATE UNIQUE INDEX "Word_user_id_word_part_of_speech_key" ON "Word"("user_id", "word", "part_of_speech");
 
 -- CreateIndex
 CREATE INDEX "WordMeaning_word_id_idx" ON "WordMeaning"("word_id");
 
 -- CreateIndex
-CREATE INDEX "SplittedNativeMeanings_meaning_id_idx" ON "SplittedNativeMeanings"("meaning_id");
+CREATE UNIQUE INDEX "WordMeaning_word_id_meaning_order_key" ON "WordMeaning"("word_id", "meaning_order");
 
 -- CreateIndex
-CREATE INDEX "ExampleSentence_word_id_idx" ON "ExampleSentence"("word_id");
+CREATE INDEX "SplittedNativeMeaning_meaning_id_idx" ON "SplittedNativeMeaning"("meaning_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "WordMetadata_word_id_key" ON "WordMetadata"("word_id");
+CREATE INDEX "ExampleSentence_meaning_id_idx" ON "ExampleSentence"("meaning_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Tag_name_key" ON "Tag"("name");
 
 -- CreateIndex
-CREATE INDEX "UserWordState_user_id_idx" ON "UserWordState"("user_id");
+CREATE INDEX "WordMeaningTag_tagId_idx" ON "WordMeaningTag"("tagId");
 
 -- CreateIndex
-CREATE INDEX "UserWordState_user_id_is_starred_idx" ON "UserWordState"("user_id", "is_starred");
+CREATE INDEX "UserMeaningState_user_id_idx" ON "UserMeaningState"("user_id");
 
 -- CreateIndex
-CREATE INDEX "UserWordState_user_id_keep_learning_idx" ON "UserWordState"("user_id", "keep_learning");
+CREATE INDEX "UserMeaningState_user_id_is_starred_idx" ON "UserMeaningState"("user_id", "is_starred");
 
 -- CreateIndex
-CREATE INDEX "UserWordState_user_id_next_review_at_idx" ON "UserWordState"("user_id", "next_review_at");
+CREATE INDEX "UserMeaningState_user_id_keep_learning_idx" ON "UserMeaningState"("user_id", "keep_learning");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserWordState_user_id_word_id_key" ON "UserWordState"("user_id", "word_id");
+CREATE INDEX "UserMeaningState_user_id_next_review_at_idx" ON "UserMeaningState"("user_id", "next_review_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserMeaningState_user_id_meaning_id_key" ON "UserMeaningState"("user_id", "meaning_id");
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -224,31 +180,19 @@ ALTER TABLE "Word" ADD CONSTRAINT "Word_user_id_fkey" FOREIGN KEY ("user_id") RE
 ALTER TABLE "WordMeaning" ADD CONSTRAINT "WordMeaning_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SplittedNativeMeanings" ADD CONSTRAINT "SplittedNativeMeanings_meaning_id_fkey" FOREIGN KEY ("meaning_id") REFERENCES "WordMeaning"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SplittedNativeMeaning" ADD CONSTRAINT "SplittedNativeMeaning_meaning_id_fkey" FOREIGN KEY ("meaning_id") REFERENCES "WordMeaning"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ExampleSentence" ADD CONSTRAINT "ExampleSentence_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ExampleSentence" ADD CONSTRAINT "ExampleSentence_meaning_id_fkey" FOREIGN KEY ("meaning_id") REFERENCES "WordMeaning"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WordMetadata" ADD CONSTRAINT "WordMetadata_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "WordMeaningTag" ADD CONSTRAINT "WordMeaningTag_meaningId_fkey" FOREIGN KEY ("meaningId") REFERENCES "WordMeaning"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WordTag" ADD CONSTRAINT "WordTag_wordId_fkey" FOREIGN KEY ("wordId") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "WordMeaningTag" ADD CONSTRAINT "WordMeaningTag_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WordTag" ADD CONSTRAINT "WordTag_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserMeaningState" ADD CONSTRAINT "UserMeaningState_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Synonym" ADD CONSTRAINT "Synonym_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Antonym" ADD CONSTRAINT "Antonym_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "RelatedWord" ADD CONSTRAINT "RelatedWord_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserWordState" ADD CONSTRAINT "UserWordState_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserWordState" ADD CONSTRAINT "UserWordState_word_id_fkey" FOREIGN KEY ("word_id") REFERENCES "Word"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserMeaningState" ADD CONSTRAINT "UserMeaningState_meaning_id_fkey" FOREIGN KEY ("meaning_id") REFERENCES "WordMeaning"("id") ON DELETE CASCADE ON UPDATE CASCADE;
