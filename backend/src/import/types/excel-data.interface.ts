@@ -9,21 +9,21 @@ export interface WordSheetRow {
   word: string;
   pos: string;
   level: string;
-  pronunciation?: string;
+  pronunciation?: string | undefined;
   meaning_order: number;
-  native_meanings: string;
-  english_definition?: string;
+  native_meanings?: string | undefined;
+  english_definition?: string | undefined;
 }
 
 export interface ExampleSheetRow {
   word_no: number;
   meaning_order: number;
-  example_sentence: string;
-  translation: string;
+  example_sentence?: string | undefined;
+  translation?: string | undefined;
 }
 
 export interface TagSheetRow {
   word_no: number;
   meaning_order: number;
-  name: string;
+  name?: string | undefined;
 }
