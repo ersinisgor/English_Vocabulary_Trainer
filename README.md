@@ -17,9 +17,9 @@ This project, currently under development, will be an English vocabulary learnin
 
 ## Development Phases
 
-- Sprint 0 — Planning & infra
-- Sprint 1 — Auth + basic user & word CRUD
-- Sprint 2 — Import & user word state
+- ✅ Sprint 0 — Planning & infra
+- ✅ Sprint 1 — Auth + basic user & word CRUD
+- ✅ Sprint 2 — Import & user word state
 - Sprint 3 — Exercise engine (core) minimal + SRS scheduling
 - Sprint 4 — More exercise types + filters + settings
 - Sprint 5 — Analytics & read-models + UI integration (frontend)
