@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Word" ALTER COLUMN "level" DROP NOT NULL;

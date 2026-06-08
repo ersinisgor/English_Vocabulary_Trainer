@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { WordsModule } from './words/words.module';
+import { ImportModule } from './import/import.module';
 import configuration from './config/configuration';
 import validationSchema from './config/validation';
 
@@ -21,6 +22,7 @@ import validationSchema from './config/validation';
     PrismaModule,
     AuthModule,
     WordsModule,
+    ImportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

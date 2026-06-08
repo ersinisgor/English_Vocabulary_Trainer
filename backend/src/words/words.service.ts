@@ -22,7 +22,7 @@ export class WordsService {
 
     const existing = await this.prisma.word.findUnique({
       where: {
-        user_word_partOfSpeech: {
+        userId_word_partOfSpeech: {
           userId,
           word: normalizedWord,
           partOfSpeech,
@@ -111,13 +111,12 @@ export class WordsService {
 
     // conflict logic stays (this is business logic, not auth)
     const normalizedWord = dto.word ? normalizeWord(dto.word) : existing.word;
-
     const newPartOfSpeech = dto.partOfSpeech ?? existing.partOfSpeech;
 
     if (dto.word || dto.partOfSpeech) {
       const conflict = await this.prisma.word.findUnique({
         where: {
-          user_word_partOfSpeech: {
+          userId_word_partOfSpeech: {
             userId,
             word: normalizedWord,
             partOfSpeech: newPartOfSpeech,
