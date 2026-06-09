@@ -200,3 +200,41 @@ export const InvalidLevelError = BaseErrorSchema(
   'Invalid level: XXX. Valid values: A1, A2, B1, B2, C1, C2',
   'Bad Request',
 );
+
+/* =====================================================
+ * USER MEANING STATE MODULE ERRORS
+ * ===================================================== */
+
+export const MeaningNotFoundError = BaseErrorSchema(
+  404,
+  'Meaning not found',
+  'Not Found',
+);
+
+/* =====================================================
+ * EXERCISES MODULE ERRORS
+ * ===================================================== */
+
+export const SessionNotFoundError = BaseErrorSchema(
+  404,
+  'Session not found',
+  'Not Found',
+);
+
+export const SessionAlreadyCompletedError = BaseErrorSchema(
+  400,
+  'Session is already completed or abandoned',
+  'Bad Request',
+);
+
+export const QuestionAlreadyAnsweredError = BaseErrorSchema(
+  400,
+  'Question has already been answered',
+  'Bad Request',
+);
+
+export const NotEnoughMeaningsError = BaseErrorSchema(
+  400,
+  'Not enough vocabulary for Multiple Choice. You need at least 4 meanings.',
+  'Bad Request',
+);
