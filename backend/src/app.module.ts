@@ -7,6 +7,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { WordsModule } from './words/words.module';
 import { ImportModule } from './import/import.module';
+import { UserMeaningStateModule } from './user-meaning-state/user-meaning-state.module';
+import { ExercisesModule } from './exercises/exercises.module';
 import configuration from './config/configuration';
 import validationSchema from './config/validation';
 
@@ -23,6 +25,8 @@ import validationSchema from './config/validation';
     AuthModule,
     WordsModule,
     ImportModule,
+    UserMeaningStateModule,
+    ExercisesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -73,9 +73,10 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  words          Word[]
-  refreshTokens  RefreshToken[]
-  meaningStates  UserMeaningState[]
+  words            Word[]
+  refreshTokens    RefreshToken[]
+  meaningStates    UserMeaningState[]
+  exerciseSessions ExerciseSession[]
 }
 
 // ---------------------------------------------------------
@@ -117,10 +118,11 @@ model WordMeaning {
   nativeMeanings    String   @map("native_meanings")
   createdAt DateTime @default(now()) @map("created_at")
 
-  examples     ExampleSentence[]
-  tags         WordMeaningTag[]
-  userStates   UserMeaningState[]
+  examples               ExampleSentence[]
+  tags                   WordMeaningTag[]
+  userStates             UserMeaningState[]
   splittedNativeMeanings SplittedNativeMeaning[]
+  sessionQuestions       SessionQuestion[]
 
   @@unique([wordId, meaningOrder])
   @@index([wordId])
@@ -182,6 +184,73 @@ model WordMeaningTag {
 
   @@id([meaningId, tagId])
   @@index([tagId])
+}
+
+// ---------------------------------------------------------
+// EXERCISE SESSION
+// ---------------------------------------------------------
+
+enum ExerciseType {
+  FLASH_CARD
+  MULTIPLE_CHOICE
+}
+
+enum LanguageSetting {
+  ENGLISH_NATIVE
+  ENGLISH_ENGLISH
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model ExerciseSession {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  exerciseType    ExerciseType    @map("exercise_type")
+  languageSetting LanguageSetting @map("language_setting")
+  status          SessionStatus   @default(IN_PROGRESS)
+
+  totalQuestions  Int             @map("total_questions")
+  answeredCount   Int             @default(0) @map("answered_count")
+  correctCount    Int             @default(0) @map("correct_count")
+  wrongCount      Int             @default(0) @map("wrong_count")
+
+  startedAt       DateTime        @default(now()) @map("started_at")
+  completedAt     DateTime?       @map("completed_at")
+
+  questions       SessionQuestion[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("exercise_sessions")
+}
+
+model SessionQuestion {
+  id            String          @id @default(cuid())
+  sessionId     String          @map("session_id")
+  session       ExerciseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  meaningId     String          @map("meaning_id")
+  meaning       WordMeaning     @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
+  questionOrder Int             @map("question_order")
+  questionText  String          @map("question_text")
+  correctAnswer String          @map("correct_answer")
+  options       String[]
+
+  isAnswered    Boolean         @default(false) @map("is_answered")
+  isCorrect     Boolean?        @map("is_correct")
+  userAnswer    String?         @map("user_answer")
+  answeredAt    DateTime?       @map("answered_at")
+
+  @@unique([sessionId, questionOrder])
+  @@index([sessionId])
+  @@map("session_questions")
 }
 
 // ---------------------------------------------------------
