@@ -2,10 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ExercisesService } from './exercises.service';
 import { QuestionGeneratorService } from './question-generator.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   ExerciseType,
   LanguageSetting,
@@ -16,6 +13,8 @@ import {
 
 const prismaMock = {
   wordMeaning: { findMany: jest.fn() },
+  wordList: { findMany: jest.fn() },
+  exerciseSettingsPreset: { findFirst: jest.fn() },
   exerciseSession: {
     create: jest.fn(),
     findFirst: jest.fn(),
@@ -44,31 +43,47 @@ const makeMeaning = (id = meaningId) => ({
     level: WordLevel.A1,
     partOfSpeech: PartOfSpeech.VERB,
     pronunciation: null,
+    wordFamily: null,
     userId,
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   splittedNativeMeanings: [],
+  examples: [],
 });
 
-const makeQuestion = (overrides: Partial<{ isAnswered: boolean; id: string }> = {}) => ({
+const makeQuestion = (
+  overrides: Partial<{
+    isAnswered: boolean;
+    id: string;
+    correctAnswer: string;
+  }> = {},
+) => ({
   id: overrides.id ?? questionId,
   sessionId,
   meaningId,
   questionOrder: 0,
   questionText: 'run',
-  correctAnswer: 'koşmak',
+  correctAnswer: overrides.correctAnswer ?? 'koşmak',
   options: [],
+  prompt: null,
   isAnswered: overrides.isAnswered ?? false,
   isCorrect: null,
   userAnswer: null,
   answeredAt: null,
 });
 
-const makeSession = (overrides: Partial<{ status: SessionStatus; answeredCount: number }> = {}) => ({
+const makeSession = (
+  overrides: Partial<{
+    status: SessionStatus;
+    answeredCount: number;
+    exerciseType: ExerciseType;
+    question: ReturnType<typeof makeQuestion>;
+  }> = {},
+) => ({
   id: sessionId,
   userId,
-  exerciseType: ExerciseType.FLASH_CARD,
+  exerciseType: overrides.exerciseType ?? ExerciseType.FLASH_CARD,
   languageSetting: LanguageSetting.ENGLISH_NATIVE,
   status: overrides.status ?? SessionStatus.IN_PROGRESS,
   totalQuestions: 1,
@@ -77,7 +92,7 @@ const makeSession = (overrides: Partial<{ status: SessionStatus; answeredCount: 
   wrongCount: 0,
   startedAt: new Date(),
   completedAt: null,
-  questions: [makeQuestion()],
+  questions: [overrides.question ?? makeQuestion()],
 });
 
 describe('ExercisesService', () => {
@@ -131,13 +146,91 @@ describe('ExercisesService', () => {
       expect(result).toEqual(session);
       expect(prismaMock.exerciseSession.create).toHaveBeenCalled();
     });
+
+    it('resolves folderIds to word-list ids and scopes the meaning query', async () => {
+      prismaMock.wordList.findMany.mockResolvedValue([{ id: 'list-9' }]);
+      prismaMock.wordMeaning.findMany.mockResolvedValue([makeMeaning()]);
+      prismaMock.exerciseSession.create.mockResolvedValue(makeSession());
+
+      await service.startSession(userId, {
+        exerciseType: ExerciseType.FLASH_CARD,
+        languageSetting: LanguageSetting.ENGLISH_NATIVE,
+        folderIds: ['folder-1'],
+      });
+
+      expect(prismaMock.wordList.findMany).toHaveBeenCalledWith({
+        where: { userId, folderId: { in: ['folder-1'] } },
+        select: { id: true },
+      });
+
+      const where = prismaMock.wordMeaning.findMany.mock.calls[0][0].where;
+      expect(where.word.listItems).toEqual({
+        some: { wordListId: { in: ['list-9'] } },
+      });
+    });
+
+    it('loads a preset when presetId is provided', async () => {
+      prismaMock.exerciseSettingsPreset.findFirst.mockResolvedValue({
+        id: 'preset-1',
+        questionCount: 5,
+        numberOfOptions: 4,
+        folderIds: [],
+        wordListIds: [],
+        levels: ['A1'],
+        partsOfSpeech: [],
+        onlyStarred: false,
+        onlyKeepLearning: false,
+        excludeLearned: false,
+        tagIds: [],
+      });
+      prismaMock.wordMeaning.findMany.mockResolvedValue([makeMeaning()]);
+      prismaMock.exerciseSession.create.mockResolvedValue(makeSession());
+
+      await service.startSession(userId, {
+        exerciseType: ExerciseType.FLASH_CARD,
+        languageSetting: LanguageSetting.ENGLISH_NATIVE,
+        presetId: 'preset-1',
+      });
+
+      expect(prismaMock.exerciseSettingsPreset.findFirst).toHaveBeenCalled();
+      const where = prismaMock.wordMeaning.findMany.mock.calls[0][0].where;
+      expect(where.word.level).toEqual({ in: ['A1'] });
+    });
+
+    it('filters out meanings without content for the chosen format (English Sentence)', async () => {
+      const withExample = {
+        ...makeMeaning('m-with'),
+        examples: [{ sentence: 'I run fast', clozeTemplate: null, translation: null }],
+      };
+      const withoutExample = makeMeaning('m-without'); // examples: []
+
+      prismaMock.wordMeaning.findMany.mockResolvedValue([
+        withExample,
+        withoutExample,
+      ]);
+
+      // MULTIPLE_CHOICE needs >= numberOfOptions matching meanings; only one
+      // meaning has a usable sentence, so it should fail validation.
+      await expect(
+        service.startSession(userId, {
+          exerciseType: ExerciseType.MULTIPLE_CHOICE,
+          languageSetting: LanguageSetting.ENGLISH_ENGLISH,
+          questionFormat: 'ENGLISH_SENTENCE' as any,
+          answerFormat: 'ENGLISH_WORD' as any,
+          numberOfOptions: 4,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   describe('submitAnswer', () => {
     it('throws NotFoundException when session not found', async () => {
       prismaMock.exerciseSession.findFirst.mockResolvedValue(null);
       await expect(
-        service.submitAnswer(userId, sessionId, { questionId, answer: 'correct' }),
+        service.submitAnswer(userId, sessionId, {
+          questionId,
+          answer: 'correct',
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -146,14 +239,20 @@ describe('ExercisesService', () => {
         makeSession({ status: SessionStatus.COMPLETED }),
       );
       await expect(
-        service.submitAnswer(userId, sessionId, { questionId, answer: 'correct' }),
+        service.submitAnswer(userId, sessionId, {
+          questionId,
+          answer: 'correct',
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws NotFoundException when question not found in session', async () => {
       prismaMock.exerciseSession.findFirst.mockResolvedValue(makeSession());
       await expect(
-        service.submitAnswer(userId, sessionId, { questionId: 'wrong-id', answer: 'correct' }),
+        service.submitAnswer(userId, sessionId, {
+          questionId: 'wrong-id',
+          answer: 'correct',
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -164,15 +263,29 @@ describe('ExercisesService', () => {
       };
       prismaMock.exerciseSession.findFirst.mockResolvedValue(session);
       await expect(
-        service.submitAnswer(userId, sessionId, { questionId, answer: 'correct' }),
+        service.submitAnswer(userId, sessionId, {
+          questionId,
+          answer: 'correct',
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('correctly evaluates FlashCard answer as correct', async () => {
       prismaMock.exerciseSession.findFirst.mockResolvedValue(makeSession());
-      const updatedQuestion = { ...makeQuestion(), isAnswered: true, isCorrect: true };
-      const updatedSession = makeSession({ answeredCount: 1, status: SessionStatus.COMPLETED });
-      prismaMock.$transaction.mockResolvedValue([updatedQuestion, null, updatedSession]);
+      const updatedQuestion = {
+        ...makeQuestion(),
+        isAnswered: true,
+        isCorrect: true,
+      };
+      const updatedSession = makeSession({
+        answeredCount: 1,
+        status: SessionStatus.COMPLETED,
+      });
+      prismaMock.$transaction.mockResolvedValue([
+        updatedQuestion,
+        null,
+        updatedSession,
+      ]);
 
       const result = await service.submitAnswer(userId, sessionId, {
         questionId,
@@ -184,9 +297,20 @@ describe('ExercisesService', () => {
 
     it('correctly evaluates FlashCard answer as incorrect', async () => {
       prismaMock.exerciseSession.findFirst.mockResolvedValue(makeSession());
-      const updatedQuestion = { ...makeQuestion(), isAnswered: true, isCorrect: false };
-      const updatedSession = makeSession({ answeredCount: 1, status: SessionStatus.COMPLETED });
-      prismaMock.$transaction.mockResolvedValue([updatedQuestion, null, updatedSession]);
+      const updatedQuestion = {
+        ...makeQuestion(),
+        isAnswered: true,
+        isCorrect: false,
+      };
+      const updatedSession = makeSession({
+        answeredCount: 1,
+        status: SessionStatus.COMPLETED,
+      });
+      prismaMock.$transaction.mockResolvedValue([
+        updatedQuestion,
+        null,
+        updatedSession,
+      ]);
 
       const result = await service.submitAnswer(userId, sessionId, {
         questionId,
@@ -195,12 +319,62 @@ describe('ExercisesService', () => {
 
       expect(result.question.isCorrect).toBe(false);
     });
+
+    it('evaluates Writing answers case- and whitespace-insensitively', async () => {
+      const question = makeQuestion({ correctAnswer: 'run' });
+      prismaMock.exerciseSession.findFirst.mockResolvedValue(
+        makeSession({ exerciseType: ExerciseType.WRITING, question }),
+      );
+      const updatedQuestion = {
+        ...question,
+        isAnswered: true,
+        isCorrect: true,
+      };
+      prismaMock.$transaction.mockResolvedValue([
+        updatedQuestion,
+        null,
+        makeSession({ answeredCount: 1, status: SessionStatus.COMPLETED }),
+      ]);
+
+      const result = await service.submitAnswer(userId, sessionId, {
+        questionId,
+        answer: '  Run ',
+      });
+
+      expect(result.question.isCorrect).toBe(true);
+    });
+
+    it('evaluates True/False answers against the boolean-string correctAnswer', async () => {
+      const question = makeQuestion({ correctAnswer: 'true' });
+      prismaMock.exerciseSession.findFirst.mockResolvedValue(
+        makeSession({ exerciseType: ExerciseType.TRUE_FALSE, question }),
+      );
+      const updatedQuestion = {
+        ...question,
+        isAnswered: true,
+        isCorrect: true,
+      };
+      prismaMock.$transaction.mockResolvedValue([
+        updatedQuestion,
+        null,
+        makeSession({ answeredCount: 1, status: SessionStatus.COMPLETED }),
+      ]);
+
+      const result = await service.submitAnswer(userId, sessionId, {
+        questionId,
+        answer: 'true',
+      });
+
+      expect(result.question.isCorrect).toBe(true);
+    });
   });
 
   describe('getResults', () => {
     it('throws BadRequestException when session is not completed', async () => {
       prismaMock.exerciseSession.findFirst.mockResolvedValue(makeSession());
-      await expect(service.getResults(userId, sessionId)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.getResults(userId, sessionId),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('returns session when completed', async () => {

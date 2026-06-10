@@ -17,6 +17,18 @@ export class SessionQuestionResponseDTO {
   options: string[];
 
   @Expose()
+  prompt: string | null;
+
+  @Expose()
+  partOfSpeech: string | null;
+
+  @Expose()
+  front: { format: string; text: string }[] | null;
+
+  @Expose()
+  back: { format: string; text: string }[] | null;
+
+  @Expose()
   isAnswered: boolean;
 
   @Expose()

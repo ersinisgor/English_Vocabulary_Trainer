@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ContentFormat" ADD VALUE 'ENGLISH_SENTENCE_CLOZE';

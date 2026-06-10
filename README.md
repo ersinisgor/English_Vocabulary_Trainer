@@ -260,10 +260,10 @@ http://localhost:3000/api/docs
 
 - ~~Sprint 0 — Planning & Infrastructure~~ ✅  
 - ~~Sprint 1 — Auth + Basic User & Word CRUD & Unit/E2E Tests~~ ✅  
-- **Sprint 2 — Import & User Word State** 🔄
-- **Sprint 3 — Core Exercise Engine + Minimal SRS Scheduling**
-- **Sprint 4 — Advanced Exercise Types + Filters**
-- **Sprint 5 — Analytics & Read Models + Frontend Integration**
+- ~~Sprint 2 — Import & User Word State~~ ✅
+- ~~Sprint 3 — Core Exercise Engine (Flash Cards + Multiple Choice) & Frontend~~ ✅
+- **Sprint 4 — Folders & Word Lists + Advanced Exercise Types + Filters + Settings Presets** 🔄
+- **Sprint 5 — Analytics & Read Models + SRS Scheduling**
 - **Sprint 6 — Real-Time Improvements**
 - **Sprint 7 — Scaling & Reliability**
 

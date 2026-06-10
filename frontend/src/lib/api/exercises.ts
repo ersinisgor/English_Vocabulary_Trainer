@@ -1,8 +1,38 @@
 import { apiClient } from './client';
 
-export type ExerciseType = 'FLASH_CARD' | 'MULTIPLE_CHOICE';
+export type ExerciseType =
+  | 'FLASH_CARD'
+  | 'MULTIPLE_CHOICE'
+  | 'WRITING'
+  | 'TRUE_FALSE'
+  | 'MATCHING'
+  | 'FIND_IN_SENTENCE';
 export type LanguageSetting = 'ENGLISH_NATIVE' | 'ENGLISH_ENGLISH';
 export type SessionStatus = 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
+export type WordLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export type PartOfSpeech =
+  | 'NOUN'
+  | 'VERB'
+  | 'ADJECTIVE'
+  | 'ADVERB'
+  | 'PHRASAL_VERB'
+  | 'IDIOM'
+  | 'EXPRESSION';
+export type ContentFormat =
+  | 'ENGLISH_WORD'
+  | 'ENGLISH_DEFINITION'
+  | 'ENGLISH_SENTENCE'
+  | 'ENGLISH_SENTENCE_CLOZE'
+  | 'ENGLISH_SENTENCE_HIGHLIGHTED'
+  | 'NATIVE_MEANING'
+  | 'NATIVE_SENTENCE'
+  | 'NATIVE_SENTENCE_HIGHLIGHTED'
+  | 'WORD_FAMILY';
+
+export interface FacePart {
+  format: ContentFormat;
+  text: string;
+}
 
 export interface SessionQuestion {
   id: string;
@@ -10,6 +40,10 @@ export interface SessionQuestion {
   questionText: string;
   correctAnswer: string;
   options: string[];
+  prompt: string | null;
+  partOfSpeech: string | null;
+  front: FacePart[] | null;
+  back: FacePart[] | null;
   isAnswered: boolean;
   isCorrect: boolean | null;
   userAnswer: string | null;
@@ -30,10 +64,35 @@ export interface Session {
   questions: SessionQuestion[];
 }
 
-export interface StartSessionPayload {
+export interface ExerciseFilters {
+  folderIds?: string[];
+  wordListIds?: string[];
+  levels?: WordLevel[];
+  partsOfSpeech?: PartOfSpeech[];
+  onlyStarred?: boolean;
+  onlyKeepLearning?: boolean;
+  excludeLearned?: boolean;
+  tagIds?: string[];
+}
+
+export interface ExerciseFormats {
+  questionFormat?: ContentFormat;
+  answerFormat?: ContentFormat;
+  frontFormats?: ContentFormat[];
+  backFormats?: ContentFormat[];
+  exampleOrder?: number;
+  // Flash Card: randomize the front/back scenario per question (within language).
+  randomFlashFront?: boolean;
+  // Flash Card: randomize BOTH the language and scenario per question.
+  randomLanguage?: boolean;
+}
+
+export interface StartSessionPayload extends ExerciseFilters, ExerciseFormats {
   exerciseType: ExerciseType;
   languageSetting: LanguageSetting;
   questionCount?: number;
+  numberOfOptions?: number;
+  presetId?: string;
 }
 
 export interface SubmitAnswerResponse {
@@ -57,16 +116,73 @@ export const exercisesApi = {
     return data.data;
   },
 
-  submitAnswer: async (sessionId: string, questionId: string, answer: string): Promise<SubmitAnswerResponse> => {
-    const { data } = await apiClient.post(`/exercises/sessions/${sessionId}/answer`, {
-      questionId,
-      answer,
-    });
+  submitAnswer: async (
+    sessionId: string,
+    questionId: string,
+    answer: string,
+  ): Promise<SubmitAnswerResponse> => {
+    const { data } = await apiClient.post(
+      `/exercises/sessions/${sessionId}/answer`,
+      { questionId, answer },
+    );
     return data.data;
   },
 
   getResults: async (sessionId: string): Promise<Session> => {
-    const { data } = await apiClient.get(`/exercises/sessions/${sessionId}/results`);
+    const { data } = await apiClient.get(
+      `/exercises/sessions/${sessionId}/results`,
+    );
+    return data.data;
+  },
+};
+
+// ----- Exercise settings presets -----
+
+export interface Preset extends ExerciseFilters, ExerciseFormats {
+  id: string;
+  name: string;
+  exerciseType: ExerciseType;
+  languageSetting: LanguageSetting;
+  questionCount: number;
+  numberOfOptions: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PresetPayload extends ExerciseFilters, ExerciseFormats {
+  name: string;
+  exerciseType: ExerciseType;
+  languageSetting: LanguageSetting;
+  questionCount?: number;
+  numberOfOptions?: number;
+}
+
+export const presetsApi = {
+  list: async (): Promise<Preset[]> => {
+    const { data } = await apiClient.get('/exercise-settings');
+    return data.data;
+  },
+
+  create: async (payload: PresetPayload): Promise<Preset> => {
+    const { data } = await apiClient.post('/exercise-settings', payload);
+    return data.data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await apiClient.delete(`/exercise-settings/${id}`);
+  },
+};
+
+// ----- Tags -----
+
+export interface Tag {
+  id: string;
+  name: string;
+}
+
+export const tagsApi = {
+  list: async (): Promise<Tag[]> => {
+    const { data } = await apiClient.get('/tags');
     return data.data;
   },
 };

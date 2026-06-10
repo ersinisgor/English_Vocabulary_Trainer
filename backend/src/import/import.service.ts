@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ExcelParser } from './utils/excel-parser.util';
-import { ExcelData } from './types/excel-data.interface';
+import { ExcelData, WordSheetRow } from './types/excel-data.interface';
 import { PartOfSpeech, WordLevel } from 'generated/prisma';
 import { normalizeWord } from 'src/common/utils/word.utils';
 import { ImportError, ImportResult } from './types/import-result.type';
@@ -34,6 +34,7 @@ export class ImportService {
       partOfSpeech: PartOfSpeech;
       level: WordLevel | null;
       pronunciation: string | undefined;
+      wordFamily: string | undefined;
       userId: string;
     };
     type MeaningRecord = {
@@ -56,6 +57,8 @@ export class ImportService {
       translation: string | undefined;
       clozeTemplate: string | undefined;
       answers: string[];
+      translationTemplate: string | undefined;
+      translationAnswers: string[];
     };
     type TagRecord = { id: string; name: string };
     type TagRelationRecord = { meaningId: string; tagId: string };
@@ -101,6 +104,7 @@ export class ImportService {
         partOfSpeech: posEnum,
         level: levelEnum,
         pronunciation: firstRow.pronunciation,
+        wordFamily: this.extractWordFamily(firstRow),
         userId,
       });
     }
@@ -191,13 +195,17 @@ export class ImportService {
         });
         continue;
       }
+      const english = this.parseExampleSentence(row.example_sentence || '');
+      const native = this.parseExampleSentence(row.translation || '');
       exampleRecords.push({
         id: randomUUID(),
         meaningId,
-        sentence: row.example_sentence,
-        translation: row.translation,
-        clozeTemplate: row.example_sentence,
-        answers: this.extractClozeAnswers(row.example_sentence || ''),
+        sentence: english.sentence || undefined,
+        clozeTemplate: english.clozeTemplate,
+        answers: english.answers,
+        translation: native.sentence || undefined,
+        translationTemplate: native.clozeTemplate,
+        translationAnswers: native.answers,
       });
     }
 
@@ -367,10 +375,71 @@ export class ImportService {
       .replace(/^-|-$/g, '');
   }
 
-  extractClozeAnswers(sentence: string): string[] {
-    const regex = /\{\{([^}]+)\}\}/g;
-    const matches = sentence.match(regex);
-    if (!matches) return [];
-    return matches.map((match) => match.replace(/\{\{|\}\}/g, ''));
+  /**
+   * Reads the "word family" cell, tolerating common header spellings so the
+   * column works whether it is named `word_family`, `wordFamily`, `Word Family`,
+   * etc. Returns undefined when empty/missing.
+   */
+  extractWordFamily(row: WordSheetRow): string | undefined {
+    const raw = row as unknown as Record<string, unknown>;
+    const candidates = [
+      'word_family',
+      'wordFamily',
+      'WordFamily',
+      'WORD_FAMILY',
+      'Word Family',
+      'word family',
+      'Word family',
+    ];
+    for (const key of candidates) {
+      const value = raw[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Parses an Excel example sentence written with `{{hidden word}}` markers
+   * into its three stored forms:
+   *
+   *   input:        "I {{noticed}} that she {{noticed}} the mistake."
+   *   sentence:     "I noticed that she noticed the mistake."   (markers stripped)
+   *   clozeTemplate:"I {{1}} that she {{2}} the mistake."        (numbered placeholders)
+   *   answers:      ["noticed", "noticed"]                       (hidden words, in order)
+   *
+   * When the sentence has no `{{}}` markers there is nothing to hide, so
+   * `clozeTemplate` is undefined and `answers` is empty.
+   */
+  parseExampleSentence(raw: string): {
+    sentence: string;
+    clozeTemplate: string | undefined;
+    answers: string[];
+  } {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return { sentence: '', clozeTemplate: undefined, answers: [] };
+    }
+
+    const markerRegex = /\{\{([^}]+)\}\}/g;
+    const answers: string[] = [];
+
+    let index = 0;
+    const clozeTemplate = trimmed.replace(markerRegex, (_match, word: string) => {
+      answers.push(word.trim());
+      index += 1;
+      return `{{${index}}}`;
+    });
+
+    const sentence = trimmed.replace(markerRegex, (_match, word: string) =>
+      word.trim(),
+    );
+
+    return {
+      sentence,
+      clozeTemplate: answers.length > 0 ? clozeTemplate : undefined,
+      answers,
+    };
   }
 }

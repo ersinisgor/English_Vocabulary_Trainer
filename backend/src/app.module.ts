@@ -9,6 +9,10 @@ import { WordsModule } from './words/words.module';
 import { ImportModule } from './import/import.module';
 import { UserMeaningStateModule } from './user-meaning-state/user-meaning-state.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { FoldersModule } from './folders/folders.module';
+import { WordListsModule } from './word-lists/word-lists.module';
+import { ExerciseSettingsModule } from './exercise-settings/exercise-settings.module';
+import { TagsModule } from './tags/tags.module';
 import configuration from './config/configuration';
 import validationSchema from './config/validation';
 
@@ -27,6 +31,10 @@ import validationSchema from './config/validation';
     ImportModule,
     UserMeaningStateModule,
     ExercisesModule,
+    FoldersModule,
+    WordListsModule,
+    ExerciseSettingsModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

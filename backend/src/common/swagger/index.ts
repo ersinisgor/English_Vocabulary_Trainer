@@ -17,3 +17,14 @@ export * from './user-meaning-state/user-meaning-state.schemas';
 
 export * from './exercises/exercises.swagger';
 export * from './exercises/exercises.schemas';
+
+export * from './folders/folders.swagger';
+export * from './folders/folders.schemas';
+
+export * from './word-lists/word-lists.swagger';
+export * from './word-lists/word-lists.schemas';
+
+export * from './exercise-settings/exercise-settings.swagger';
+export * from './exercise-settings/exercise-settings.schemas';
+
+export * from './tags/tags.swagger';

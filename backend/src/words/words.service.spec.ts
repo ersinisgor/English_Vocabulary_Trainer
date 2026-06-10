@@ -30,6 +30,7 @@ describe('WordsService', () => {
     level: WordLevel.A1,
     partOfSpeech: PartOfSpeech.NOUN,
     pronunciation: null,
+    wordFamily: null,
     userId,
     createdAt: new Date(),
     updatedAt: new Date(),

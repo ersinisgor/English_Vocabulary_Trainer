@@ -5,6 +5,7 @@ export interface Word {
   word: string;
   level: string | null;
   partOfSpeech: string;
+  wordFamily?: string | null;
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +28,13 @@ export const wordsApi = {
   getAll: async (query: WordsQuery = {}): Promise<WordsResponse> => {
     const { data } = await apiClient.get('/words', { params: query });
     return data.data;
+  },
+
+  search: async (search: string): Promise<Word[]> => {
+    const { data } = await apiClient.get('/words', {
+      params: { search, limit: 100 },
+    });
+    return data.data.data;
   },
 
   delete: async (id: string): Promise<void> => {
