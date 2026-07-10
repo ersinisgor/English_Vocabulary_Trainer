@@ -5,6 +5,9 @@ export class SessionQuestionResponseDTO {
   id: string;
 
   @Expose()
+  exerciseType: string | null;
+
+  @Expose()
   questionOrder: number;
 
   @Expose()

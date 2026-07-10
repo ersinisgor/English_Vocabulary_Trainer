@@ -15,6 +15,7 @@ const makeMeaning = (
     nativeMeanings: string;
     englishDefinition: string | null;
     examples: any[];
+    splits: string[];
   }> = {},
 ) => ({
   id: overrides.id ?? 'meaning-1',
@@ -33,11 +34,17 @@ const makeMeaning = (
     partOfSpeech: PartOfSpeech.VERB,
     pronunciation: null,
     wordFamily: null,
+    wordFamilyMeaning: null,
     userId: 'user-1',
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-  splittedNativeMeanings: [],
+  splittedNativeMeanings: (overrides.splits ?? []).map((meaningText, i) => ({
+    id: `split-${i}`,
+    meaningId: overrides.id ?? 'meaning-1',
+    meaningText,
+    order: i + 1,
+  })),
   examples: overrides.examples ?? [],
 });
 
@@ -187,6 +194,53 @@ describe('QuestionGeneratorService', () => {
         format: 'WORD_FAMILY',
         text: 'notice, noticeable, noticeably',
       });
+    });
+
+    it('appends the word family meanings right below the word family', () => {
+      const meaning = makeMeaning({ id: 'meaning-1', word: 'notice' });
+      (meaning.word as any).wordFamily = 'notice/noticeable';
+      (meaning.word as any).wordFamilyMeaning = 'fark etmek/farkedilir';
+
+      const result = service.generateQuestion(
+        meaning,
+        ExerciseType.FLASH_CARD,
+        LanguageSetting.ENGLISH_NATIVE,
+        [meaning],
+        4,
+        {
+          questionFormat: ContentFormat.ENGLISH_WORD,
+          answerFormat: ContentFormat.NATIVE_MEANING,
+          frontFormats: [ContentFormat.ENGLISH_WORD],
+          backFormats: [ContentFormat.NATIVE_MEANING, ContentFormat.WORD_FAMILY],
+        },
+      );
+
+      expect(result.back?.[1]?.format).toBe('WORD_FAMILY');
+      expect(result.back?.[2]).toEqual({
+        format: 'WORD_FAMILY_MEANING',
+        text: 'fark etmek / farkedilir',
+      });
+    });
+
+    it('omits the word family meanings when the word has none', () => {
+      const meaning = makeMeaning({ id: 'meaning-1', word: 'notice' });
+      (meaning.word as any).wordFamily = 'notice/noticeable';
+
+      const result = service.generateQuestion(
+        meaning,
+        ExerciseType.FLASH_CARD,
+        LanguageSetting.ENGLISH_NATIVE,
+        [meaning],
+        4,
+        {
+          questionFormat: ContentFormat.ENGLISH_WORD,
+          answerFormat: ContentFormat.NATIVE_MEANING,
+          frontFormats: [ContentFormat.ENGLISH_WORD],
+          backFormats: [ContentFormat.NATIVE_MEANING, ContentFormat.WORD_FAMILY],
+        },
+      );
+
+      expect(result.back).toHaveLength(2);
     });
   });
 
@@ -511,6 +565,26 @@ describe('QuestionGeneratorService', () => {
       expect(result.partOfSpeech).toBeUndefined();
     });
 
+    it('carries pos when the question is the English definition', () => {
+      const result = service.generateQuestion(
+        allMeanings[0],
+        ExerciseType.MULTIPLE_CHOICE,
+        LanguageSetting.ENGLISH_ENGLISH,
+        allMeanings,
+        4,
+        {
+          questionFormat: ContentFormat.ENGLISH_DEFINITION,
+          answerFormat: ContentFormat.ENGLISH_WORD,
+          frontFormats: [ContentFormat.ENGLISH_DEFINITION],
+          backFormats: [ContentFormat.ENGLISH_WORD],
+        },
+      );
+
+      expect(result.questionText).toBe('to move fast on foot');
+      // The definition identifies the word directly → pos is shown.
+      expect(result.partOfSpeech).toBe('verb');
+    });
+
     it('honors a custom numberOfOptions', () => {
       const result = service.generateQuestion(
         allMeanings[0],
@@ -589,6 +663,45 @@ describe('QuestionGeneratorService', () => {
       );
     });
 
+    it('capitalizes the first letter of the full and cloze example sentences', () => {
+      const meaning = makeMeaning({
+        id: 'meaning-1',
+        word: 'notice',
+        examples: [
+          {
+            sentence: 'i noticed the mistake.',
+            clozeTemplate: 'i {{1}} the mistake.',
+            translation: null,
+          },
+        ],
+      });
+
+      expect(
+        service.resolveContent(meaning, ContentFormat.ENGLISH_SENTENCE),
+      ).toBe('I noticed the mistake.');
+      expect(
+        service.resolveContent(meaning, ContentFormat.ENGLISH_SENTENCE_CLOZE),
+      ).toBe('I _____ the mistake.');
+    });
+
+    it('leaves a cloze alone when its blank falls on the first word', () => {
+      const meaning = makeMeaning({
+        id: 'meaning-1',
+        word: 'notice',
+        examples: [
+          {
+            sentence: 'notice the mistake.',
+            clozeTemplate: '{{1}} the mistake.',
+            translation: null,
+          },
+        ],
+      });
+
+      expect(
+        service.resolveContent(meaning, ContentFormat.ENGLISH_SENTENCE_CLOZE),
+      ).toBe('_____ the mistake.');
+    });
+
     it('spaces slashes in word family too', () => {
       const meaning = makeMeaning({ id: 'meaning-1' });
       (meaning.word as any).wordFamily = 'notice/noticeable/noticeably';
@@ -611,6 +724,92 @@ describe('QuestionGeneratorService', () => {
       expect(result.questionText).toBe('koşmak');
       expect(result.correctAnswer).toBe('run');
       expect(result.options).toEqual([]);
+      // The question is the native meaning → pos is shown.
+      expect(result.partOfSpeech).toBe('verb');
+      // Hint = the English definition (the complementary format).
+      expect(result.back).toEqual([
+        { format: ContentFormat.ENGLISH_DEFINITION, text: 'to move fast on foot' },
+      ]);
+    });
+
+    it('offers the native meaning as the hint when prompting the definition', () => {
+      const result = service.generateQuestion(
+        allMeanings[0],
+        ExerciseType.WRITING,
+        LanguageSetting.ENGLISH_ENGLISH,
+        allMeanings,
+      );
+
+      expect(result.questionText).toBe('to move fast on foot');
+      expect(result.back).toEqual([
+        { format: ContentFormat.NATIVE_MEANING, text: 'koşmak' },
+      ]);
+    });
+
+    it('omits the hint when the complementary content is missing', () => {
+      const meaning = makeMeaning({ id: 'meaning-1', englishDefinition: null });
+      const result = service.generateQuestion(
+        meaning,
+        ExerciseType.WRITING,
+        LanguageSetting.ENGLISH_NATIVE,
+        [meaning, ...allMeanings.slice(1)],
+      );
+
+      // Prompt = native meaning; no definition exists → no hint attached.
+      expect(result.questionText).toBe('koşmak');
+      expect(result.back).toBeUndefined();
+    });
+
+    it('prompts the English definition (ENGLISH_ENGLISH) and still shows pos', () => {
+      const result = service.generateQuestion(
+        allMeanings[0],
+        ExerciseType.WRITING,
+        LanguageSetting.ENGLISH_ENGLISH,
+        allMeanings,
+      );
+
+      expect(result.questionText).toBe('to move fast on foot');
+      // The definition identifies the word directly → pos is shown.
+      expect(result.partOfSpeech).toBe('verb');
+    });
+
+    it('prompts the English definition when that format is chosen (pos shown)', () => {
+      const result = service.generateQuestion(
+        allMeanings[0],
+        ExerciseType.WRITING,
+        LanguageSetting.ENGLISH_NATIVE,
+        allMeanings,
+        4,
+        {
+          questionFormat: ContentFormat.ENGLISH_DEFINITION,
+          answerFormat: ContentFormat.ENGLISH_WORD,
+          frontFormats: [ContentFormat.ENGLISH_DEFINITION],
+          backFormats: [ContentFormat.ENGLISH_WORD],
+        },
+      );
+
+      expect(result.questionText).toBe('to move fast on foot');
+      expect(result.correctAnswer).toBe('run');
+      expect(result.partOfSpeech).toBe('verb');
+    });
+
+    it('prompts the native meaning when that format is chosen (pos shown)', () => {
+      const result = service.generateQuestion(
+        allMeanings[0],
+        ExerciseType.WRITING,
+        LanguageSetting.ENGLISH_ENGLISH,
+        allMeanings,
+        4,
+        {
+          questionFormat: ContentFormat.NATIVE_MEANING,
+          answerFormat: ContentFormat.ENGLISH_WORD,
+          frontFormats: [ContentFormat.NATIVE_MEANING],
+          backFormats: [ContentFormat.ENGLISH_WORD],
+        },
+      );
+
+      expect(result.questionText).toBe('koşmak');
+      expect(result.partOfSpeech).toBe('verb');
     });
   });
 
@@ -627,6 +826,8 @@ describe('QuestionGeneratorService', () => {
       expect(result.prompt).toBeDefined();
       const isActuallyCorrect = result.prompt === 'koşmak';
       expect(result.correctAnswer).toBe(isActuallyCorrect ? 'true' : 'false');
+      // The question is the English word → pos is shown.
+      expect(result.partOfSpeech).toBe('verb');
     });
   });
 
@@ -650,6 +851,8 @@ describe('QuestionGeneratorService', () => {
       expect(result.questionText).not.toMatch(/\brun\b/);
       expect(result.correctAnswer).toBe('run');
       expect(result.options).toContain('run');
+      // The question is a sentence → no separate pos.
+      expect(result.partOfSpeech).toBeUndefined();
     });
 
     it('hasUsableExample is false when there are no examples', () => {
@@ -657,17 +860,66 @@ describe('QuestionGeneratorService', () => {
     });
   });
 
-  describe('Matching', () => {
-    it('builds a board where every question shares the same option set', () => {
-      const results = service.generateMatchingQuestions(
-        allMeanings,
+  describe('native meaning rendering', () => {
+    // "bottom" recorded as "dip/alt" with two split terms.
+    const bottom = makeMeaning({
+      id: 'm-bottom',
+      word: 'bottom',
+      nativeMeanings: 'dip/alt',
+      splits: ['dip', 'alt'],
+    });
+    const nativeMcFormats = {
+      questionFormat: ContentFormat.ENGLISH_WORD,
+      answerFormat: ContentFormat.NATIVE_MEANING,
+      frontFormats: [ContentFormat.ENGLISH_WORD],
+      backFormats: [ContentFormat.NATIVE_MEANING],
+    };
+
+    it('MC: shows a single split term as the correct option', () => {
+      const result = service.generateQuestion(
+        bottom,
+        ExerciseType.MULTIPLE_CHOICE,
         LanguageSetting.ENGLISH_NATIVE,
+        [bottom, ...allMeanings.slice(1)],
+        4,
+        nativeMcFormats,
       );
 
-      expect(results).toHaveLength(allMeanings.length);
-      const optionSets = results.map((r) => [...r.options].sort().join(','));
-      expect(new Set(optionSets).size).toBe(1);
-      results.forEach((r) => expect(r.options).toContain(r.correctAnswer));
+      // First split term is the representative option (not the combined list).
+      expect(result.correctAnswer).toBe('dip');
+      expect(result.options).not.toContain('dip / alt');
+    });
+
+    it('MC: derives a single term even without split rows', () => {
+      const noSplit = makeMeaning({
+        id: 'm-x',
+        word: 'bottom',
+        nativeMeanings: 'dip/alt',
+      });
+      const result = service.generateQuestion(
+        noSplit,
+        ExerciseType.MULTIPLE_CHOICE,
+        LanguageSetting.ENGLISH_NATIVE,
+        [noSplit, ...allMeanings.slice(1)],
+        4,
+        nativeMcFormats,
+      );
+
+      expect(result.correctAnswer).toBe('dip');
+    });
+
+    it('Flash Card: native face renders the full combined list', () => {
+      const result = service.generateQuestion(
+        bottom,
+        ExerciseType.FLASH_CARD,
+        LanguageSetting.ENGLISH_NATIVE,
+        [bottom],
+        4,
+        nativeMcFormats,
+      );
+
+      const back = result.back?.find((p) => p.format === 'NATIVE_MEANING');
+      expect(back?.text).toBe('dip / alt');
     });
   });
 });

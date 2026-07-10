@@ -6,8 +6,11 @@ export type ExerciseType =
   | 'WRITING'
   | 'TRUE_FALSE'
   | 'MATCHING'
-  | 'FIND_IN_SENTENCE';
+  | 'FIND_IN_SENTENCE'
+  | 'TEST';
 export type LanguageSetting = 'ENGLISH_NATIVE' | 'ENGLISH_ENGLISH';
+export type WordOrder = 'LIST' | 'RANDOM';
+export type WrongAnswerSource = 'SAME' | 'ALL' | 'FOLDERS' | 'DATE_RANGE';
 export type SessionStatus = 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
 export type WordLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export type PartOfSpeech =
@@ -27,7 +30,9 @@ export type ContentFormat =
   | 'NATIVE_MEANING'
   | 'NATIVE_SENTENCE'
   | 'NATIVE_SENTENCE_HIGHLIGHTED'
-  | 'WORD_FAMILY';
+  | 'WORD_FAMILY'
+  // Never picked directly — the backend appends it under WORD_FAMILY.
+  | 'WORD_FAMILY_MEANING';
 
 export interface FacePart {
   format: ContentFormat;
@@ -36,6 +41,8 @@ export interface FacePart {
 
 export interface SessionQuestion {
   id: string;
+  // Concrete type for Test (mixed) sessions; null falls back to the session type.
+  exerciseType: ExerciseType | null;
   questionOrder: number;
   questionText: string;
   correctAnswer: string;
@@ -55,6 +62,8 @@ export interface Session {
   exerciseType: ExerciseType;
   languageSetting: LanguageSetting;
   status: SessionStatus;
+  timeLimitSeconds: number | null;
+  trackProgress: boolean;
   totalQuestions: number;
   answeredCount: number;
   correctCount: number;
@@ -90,8 +99,20 @@ export interface ExerciseFormats {
 export interface StartSessionPayload extends ExerciseFilters, ExerciseFormats {
   exerciseType: ExerciseType;
   languageSetting: LanguageSetting;
+  // Hand-picked words; restricts the pool to exactly these. Not storable in a preset.
+  wordIds?: string[];
   questionCount?: number;
   numberOfOptions?: number;
+  wordOrder?: WordOrder;
+  askMoreThanOnce?: boolean;
+  timeLimitSeconds?: number;
+  trackProgress?: boolean;
+  testTypes?: ExerciseType[];
+  wrongAnswerSource?: WrongAnswerSource;
+  wrongAnswerFolderIds?: string[];
+  wrongAnswerWordListIds?: string[];
+  wrongAnswerFrom?: string;
+  wrongAnswerTo?: string;
   presetId?: string;
 }
 
@@ -136,6 +157,30 @@ export const exercisesApi = {
   },
 };
 
+// ----- Matching game (word ↔ first native meaning) -----
+
+export interface MatchingPair {
+  pairId: string;
+  first: string;
+  second: string;
+}
+
+export interface MatchingResponse {
+  pairs: MatchingPair[];
+}
+
+export interface StartMatchingPayload extends ExerciseFilters {
+  pairCount: number;
+  wordIds?: string[];
+}
+
+export const matchingApi = {
+  start: async (payload: StartMatchingPayload): Promise<MatchingResponse> => {
+    const { data } = await apiClient.post('/exercises/matching', payload);
+    return data.data;
+  },
+};
+
 // ----- Exercise settings presets -----
 
 export interface Preset extends ExerciseFilters, ExerciseFormats {
@@ -145,6 +190,16 @@ export interface Preset extends ExerciseFilters, ExerciseFormats {
   languageSetting: LanguageSetting;
   questionCount: number;
   numberOfOptions: number;
+  wordOrder: WordOrder;
+  askMoreThanOnce: boolean;
+  timeLimitSeconds: number | null;
+  trackProgress: boolean;
+  testTypes: ExerciseType[];
+  wrongAnswerSource: WrongAnswerSource;
+  wrongAnswerFolderIds: string[];
+  wrongAnswerWordListIds: string[];
+  wrongAnswerFrom: string | null;
+  wrongAnswerTo: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +210,16 @@ export interface PresetPayload extends ExerciseFilters, ExerciseFormats {
   languageSetting: LanguageSetting;
   questionCount?: number;
   numberOfOptions?: number;
+  wordOrder?: WordOrder;
+  askMoreThanOnce?: boolean;
+  timeLimitSeconds?: number;
+  trackProgress?: boolean;
+  testTypes?: ExerciseType[];
+  wrongAnswerSource?: WrongAnswerSource;
+  wrongAnswerFolderIds?: string[];
+  wrongAnswerWordListIds?: string[];
+  wrongAnswerFrom?: string;
+  wrongAnswerTo?: string;
 }
 
 export const presetsApi = {

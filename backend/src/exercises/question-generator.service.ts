@@ -18,10 +18,12 @@ const DEFAULT_OPTION_COUNT = 4;
 const CLOZE_BLANK = '_____';
 
 // Formats that identify the word directly, so a separate pos label is shown
-// next to them (Flash Card faces, MC question card).
+// next to them (Flash Card faces, MC question card, Writing prompt). The word,
+// its native meaning, and its English definition each pin down one meaning.
 const POS_QUESTION_FORMATS: ContentFormat[] = [
   ContentFormat.ENGLISH_WORD,
   ContentFormat.NATIVE_MEANING,
+  ContentFormat.ENGLISH_DEFINITION,
 ];
 
 // Full, lowercase part-of-speech labels (e.g. "phrasal verb"). Shown separately
@@ -34,6 +36,13 @@ const POS_LABELS: Record<PartOfSpeech, string> = {
   [PartOfSpeech.PHRASAL_VERB]: 'phrasal verb',
   [PartOfSpeech.IDIOM]: 'idiom',
   [PartOfSpeech.EXPRESSION]: 'expression',
+};
+
+// Writing prompt → the complementary format offered as an on-demand hint:
+// native meaning ↔ English definition. Other prompt formats get no hint.
+const WRITING_HINT_FORMAT: Partial<Record<ContentFormat, ContentFormat>> = {
+  [ContentFormat.NATIVE_MEANING]: ContentFormat.ENGLISH_DEFINITION,
+  [ContentFormat.ENGLISH_DEFINITION]: ContentFormat.NATIVE_MEANING,
 };
 
 const SENTENCE_FORMATS: ContentFormat[] = [
@@ -100,7 +109,6 @@ const FLASH_RANDOM_SCENARIOS: Record<LanguageSetting, FlashScenario[]> = {
 export class QuestionGeneratorService {
   /**
    * Generates a single question for the per-meaning exercise types.
-   * MATCHING is built separately via {@link generateMatchingQuestions}.
    *
    * Flash Card and Multiple Choice honor `formats` (question/answer content
    * facets + example order); the other types ignore it.
@@ -117,7 +125,7 @@ export class QuestionGeneratorService {
       case ExerciseType.FLASH_CARD:
         return this.generateFlashCard(meaning, languageSetting, formats);
       case ExerciseType.WRITING:
-        return this.generateWriting(meaning, languageSetting);
+        return this.generateWriting(meaning, languageSetting, formats);
       case ExerciseType.TRUE_FALSE:
         return this.generateTrueFalse(meaning, languageSetting, pool);
       case ExerciseType.FIND_IN_SENTENCE:
@@ -166,24 +174,6 @@ export class QuestionGeneratorService {
     );
   }
 
-  /**
-   * Builds a matching board: every question shares the same option set
-   * (all native answers of the group), each with its own correct answer.
-   */
-  generateMatchingQuestions(
-    group: MeaningWithRelations[],
-    languageSetting: LanguageSetting,
-  ): GeneratedQuestion[] {
-    const answers = group.map((m) => this.buildAnswer(m, languageSetting));
-    const options = shuffle([...new Set(answers)]);
-
-    return group.map((meaning) => ({
-      questionText: meaning.word.word,
-      correctAnswer: this.buildAnswer(meaning, languageSetting),
-      options,
-    }));
-  }
-
   private generateFlashCard(
     meaning: MeaningWithRelations,
     languageSetting: LanguageSetting,
@@ -201,11 +191,7 @@ export class QuestionGeneratorService {
       );
     }
     if (formats?.randomFront) {
-      return this.generateRandomFlashCard(
-        meaning,
-        [languageSetting],
-        exampleOrder,
-      );
+      return this.generateRandomFlashCard(meaning, [languageSetting], exampleOrder);
     }
 
     const resolved = this.resolveFormats(
@@ -284,22 +270,100 @@ export class QuestionGeneratorService {
     formats: ContentFormat[],
     exampleOrder: number | undefined,
   ): FacePart[] {
-    return formats
-      .map((format) => ({
-        format,
-        text: this.resolveContent(meaning, format, { exampleOrder }),
-      }))
-      .filter((part): part is FacePart => part.text !== null);
+    const parts: FacePart[] = [];
+
+    for (const format of formats) {
+      const text = this.resolveContent(meaning, format, { exampleOrder });
+      if (text === null) continue;
+      parts.push({ format, text });
+
+      // The word family is unreadable without its meanings, so they ride along
+      // on the next line — unless the caller already asked for them explicitly.
+      if (
+        format === ContentFormat.WORD_FAMILY &&
+        !formats.includes(ContentFormat.WORD_FAMILY_MEANING)
+      ) {
+        const gloss = this.resolveContent(
+          meaning,
+          ContentFormat.WORD_FAMILY_MEANING,
+        );
+        if (gloss !== null) {
+          parts.push({ format: ContentFormat.WORD_FAMILY_MEANING, text: gloss });
+        }
+      }
+    }
+
+    return parts;
+  }
+
+  /** Accepted native-meaning answers for a meaning: each "/"-split term. */
+  nativeMeaningParts(meaning: MeaningWithRelations): string[] {
+    if (meaning.splittedNativeMeanings.length > 0) {
+      return meaning.splittedNativeMeanings
+        .map((s) => s.meaningText.trim())
+        .filter(Boolean);
+    }
+    return meaning.nativeMeanings
+      .split('/')
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
+
+  /** Whether a meaning has at least one usable native-meaning term. */
+  hasNativeMeaningParts(meaning: MeaningWithRelations): boolean {
+    return this.nativeMeaningParts(meaning).length > 0;
   }
 
   private generateWriting(
     meaning: MeaningWithRelations,
     languageSetting: LanguageSetting,
+    formats?: QuestionFormats,
   ): GeneratedQuestion {
+    const resolved = this.resolveFormats(
+      ExerciseType.WRITING,
+      languageSetting,
+      formats,
+    );
+
+    // Native-meaning answer mode: show the English word and accept any of the
+    // "/"-split native terms (the user types one, e.g. "gizli").
+    if (resolved.answerFormat === ContentFormat.NATIVE_MEANING) {
+      return {
+        questionText: meaning.word.word,
+        correctAnswer: this.spaceSlashes(meaning.nativeMeanings),
+        options: this.nativeMeaningParts(meaning),
+        partOfSpeech: this.posLabel(meaning),
+      };
+    }
+
+    // The prompt asks the native meaning or the English definition; the user
+    // types the word. Falls back to buildAnswer when the chosen format is
+    // missing (pool filtering should normally prevent this).
+    const { questionFormat } = resolved;
+    const questionText =
+      this.resolveContent(meaning, questionFormat) ??
+      this.buildAnswer(meaning, languageSetting);
+
+    // Optional hint: the "other" of native meaning / English definition, shown
+    // on demand under the prompt. Omitted when its content is missing.
+    const hintFormat = WRITING_HINT_FORMAT[questionFormat];
+    const hintText = hintFormat
+      ? this.resolveContent(meaning, hintFormat)
+      : null;
+
     return {
-      questionText: this.buildAnswer(meaning, languageSetting),
+      questionText,
       correctAnswer: meaning.word.word,
       options: [],
+      ...(hintFormat &&
+        hintText !== null && {
+          back: [{ format: hintFormat, text: hintText }],
+        }),
+      // Pos is shown when the prompt identifies the word directly (the word, its
+      // native meaning, or its English definition).
+      ...(POS_QUESTION_FORMATS.includes(questionFormat) && {
+        partOfSpeech: this.posLabel(meaning),
+      }),
     };
   }
 
@@ -321,12 +385,16 @@ export class QuestionGeneratorService {
       this.resolveContent(meaning, questionFormat, { exampleOrder }) ?? '';
 
     // Answers that are the English word carry their part of speech inline, e.g.
-    // "wake up (phrasal verb)" — each option uses its own word's pos.
+    // "wake up (phrasal verb)" — each option uses its own word's pos. Native
+    // meaning options show a single representative term (not the whole list).
     const wordAnswer = answerFormat === ContentFormat.ENGLISH_WORD;
+    const nativeAnswer = answerFormat === ContentFormat.NATIVE_MEANING;
     const project = (m: MeaningWithRelations): string | null =>
       wordAnswer
         ? this.wordWithPos(m)
-        : this.resolveContent(m, answerFormat, { exampleOrder });
+        : nativeAnswer
+          ? this.nativeMeaningPrimary(m)
+          : this.resolveContent(m, answerFormat, { exampleOrder });
 
     const correctAnswer = project(meaning) ?? '';
     const distractors = this.buildDistractors(
@@ -375,6 +443,8 @@ export class QuestionGeneratorService {
       prompt: shown,
       correctAnswer: shown === correctAnswer ? 'true' : 'false',
       options: [],
+      // The question is the English word, so its pos is shown alongside.
+      partOfSpeech: this.posLabel(meaning),
     };
   }
 
@@ -406,9 +476,29 @@ export class QuestionGeneratorService {
     languageSetting: LanguageSetting,
   ): string {
     if (languageSetting === LanguageSetting.ENGLISH_ENGLISH) {
-      return meaning.englishDefinition ?? this.spaceSlashes(meaning.nativeMeanings);
+      return meaning.englishDefinition ?? this.nativeMeaningText(meaning);
     }
+    return this.nativeMeaningText(meaning);
+  }
+
+  /**
+   * Renders a meaning's full native side as a spaced combined list, e.g.
+   * "doğrulamak / onaylamak / geçerli kılmak".
+   */
+  private nativeMeaningText(meaning: MeaningWithRelations): string {
     return this.spaceSlashes(meaning.nativeMeanings);
+  }
+
+  /**
+   * A single representative native term for a meaning — the first "/"-split term
+   * (e.g. "doğrulamak"). Used for Multiple Choice options, where showing the
+   * whole list would reveal too much. Falls back to the combined list.
+   */
+  private nativeMeaningPrimary(meaning: MeaningWithRelations): string {
+    return (
+      this.nativeMeaningParts(meaning)[0] ??
+      this.spaceSlashes(meaning.nativeMeanings)
+    );
   }
 
   private buildDistractors(
@@ -445,18 +535,21 @@ export class QuestionGeneratorService {
       case ContentFormat.ENGLISH_DEFINITION:
         return meaning.englishDefinition ?? null;
       case ContentFormat.NATIVE_MEANING:
-        return this.spaceSlashes(meaning.nativeMeanings);
+        return this.nativeMeaningText(meaning);
       case ContentFormat.ENGLISH_SENTENCE: {
         // Full example sentence (target word visible).
         const example = this.pickExample(meaning, opts.exampleOrder, 'sentence');
         if (!example) return null;
-        return example.sentence ?? this.fullFromCloze(example) ?? null;
+        const sentence = example.sentence ?? this.fullFromCloze(example) ?? null;
+        return sentence === null ? null : this.capitalizeFirst(sentence);
       }
       case ContentFormat.ENGLISH_SENTENCE_CLOZE: {
         // Example sentence with the target word(s) blanked out.
         const example = this.pickExample(meaning, opts.exampleOrder, 'sentence');
         if (!example) return null;
-        return this.buildClozeFromExample(example, meaning.word.word);
+        return this.capitalizeFirst(
+          this.buildClozeFromExample(example, meaning.word.word),
+        );
       }
       case ContentFormat.ENGLISH_SENTENCE_HIGHLIGHTED: {
         // Full sentence with the target word(s) marked for bold (**word**).
@@ -493,6 +586,10 @@ export class QuestionGeneratorService {
         return meaning.word.wordFamily
           ? this.spaceSlashes(meaning.word.wordFamily)
           : null;
+      case ContentFormat.WORD_FAMILY_MEANING:
+        return meaning.word.wordFamilyMeaning
+          ? this.spaceSlashes(meaning.word.wordFamilyMeaning)
+          : null;
       default:
         return null;
     }
@@ -501,6 +598,14 @@ export class QuestionGeneratorService {
   /** Normalizes "/" separators to " / " for readability (e.g. a/b → a / b). */
   private spaceSlashes(text: string): string {
     return text.replace(/\s*\/\s*/g, ' / ');
+  }
+
+  /**
+   * Uppercases the sentence's first character. A cloze whose blank falls on the
+   * first word starts with "_", which has no uppercase form — left untouched.
+   */
+  private capitalizeFirst(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
   /** Lowercase part-of-speech label for a meaning, e.g. "phrasal verb". */
@@ -542,6 +647,20 @@ export class QuestionGeneratorService {
         answerFormat: back,
         frontFormats: [front],
         backFormats: [back],
+      };
+    }
+
+    if (exerciseType === ExerciseType.WRITING) {
+      // Prompt = native meaning (or English definition for English-English);
+      // the answer is always the English word.
+      const prompt = isEnglishEnglish
+        ? ContentFormat.ENGLISH_DEFINITION
+        : ContentFormat.NATIVE_MEANING;
+      return {
+        questionFormat: prompt,
+        answerFormat: ContentFormat.ENGLISH_WORD,
+        frontFormats: [prompt],
+        backFormats: [ContentFormat.ENGLISH_WORD],
       };
     }
 

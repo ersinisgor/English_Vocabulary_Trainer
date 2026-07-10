@@ -5,6 +5,8 @@ import {
   LanguageSetting,
   PartOfSpeech,
   WordLevel,
+  WordOrder,
+  WrongAnswerSource,
 } from 'generated/prisma';
 
 export class PresetResponseDTO {
@@ -28,6 +30,36 @@ export class PresetResponseDTO {
 
   @Expose()
   numberOfOptions: number;
+
+  @Expose()
+  wordOrder: WordOrder;
+
+  @Expose()
+  askMoreThanOnce: boolean;
+
+  @Expose()
+  timeLimitSeconds: number | null;
+
+  @Expose()
+  trackProgress: boolean;
+
+  @Expose()
+  testTypes: ExerciseType[];
+
+  @Expose()
+  wrongAnswerSource: WrongAnswerSource;
+
+  @Expose()
+  wrongAnswerFolderIds: string[];
+
+  @Expose()
+  wrongAnswerWordListIds: string[];
+
+  @Expose()
+  wrongAnswerFrom: Date | null;
+
+  @Expose()
+  wrongAnswerTo: Date | null;
 
   @Expose()
   questionFormat: ContentFormat | null;

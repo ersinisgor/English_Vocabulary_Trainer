@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -17,6 +18,8 @@ import {
   LanguageSetting,
   PartOfSpeech,
   WordLevel,
+  WordOrder,
+  WrongAnswerSource,
 } from 'generated/prisma';
 
 export class CreatePresetDTO {
@@ -44,6 +47,52 @@ export class CreatePresetDTO {
   @Max(10)
   @Type(() => Number)
   numberOfOptions?: number;
+
+  @IsOptional()
+  @IsEnum(WordOrder)
+  wordOrder?: WordOrder;
+
+  @IsOptional()
+  @IsBoolean()
+  askMoreThanOnce?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  @Type(() => Number)
+  timeLimitSeconds?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  trackProgress?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ExerciseType, { each: true })
+  testTypes?: ExerciseType[];
+
+  @IsOptional()
+  @IsEnum(WrongAnswerSource)
+  wrongAnswerSource?: WrongAnswerSource;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  wrongAnswerFolderIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  wrongAnswerWordListIds?: string[];
+
+  @IsOptional()
+  @IsDateString()
+  wrongAnswerFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  wrongAnswerTo?: string;
 
   @IsOptional()
   @IsEnum(ContentFormat)

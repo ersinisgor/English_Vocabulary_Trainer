@@ -3,6 +3,11 @@ import axios, { AxiosError } from 'axios';
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
+  // Serialize array params as repeated keys (`tagIds=a&tagIds=b`) instead of
+  // the default bracket form (`tagIds[]=a`). Express 5's default query parser
+  // ("simple") does not decode brackets, so the bracket form would arrive as a
+  // `tagIds[]` property and get rejected by the backend's whitelist validation.
+  paramsSerializer: { indexes: null },
 });
 
 apiClient.interceptors.request.use((config) => {

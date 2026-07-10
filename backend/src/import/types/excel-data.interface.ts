@@ -14,6 +14,7 @@ export interface WordSheetRow {
   native_meanings?: string | undefined;
   english_definition?: string | undefined;
   word_family?: string | undefined;
+  word_family_meaning?: string | undefined;
 }
 
 export interface ExampleSheetRow {

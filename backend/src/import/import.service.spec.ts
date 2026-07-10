@@ -85,4 +85,28 @@ describe('ImportService.extractWordFamily', () => {
     expect(service.extractWordFamily({} as any)).toBeUndefined();
     expect(service.extractWordFamily({ word_family: '   ' } as any)).toBeUndefined();
   });
+
+  it('reads the canonical word_family_meaning header', () => {
+    expect(
+      service.extractWordFamilyMeaning({
+        word_family_meaning: ' fark etmek, gözle görülür ',
+      } as any),
+    ).toBe('fark etmek, gözle görülür');
+  });
+
+  it('tolerates alternative word_family_meaning header spellings', () => {
+    expect(
+      service.extractWordFamilyMeaning({ wordFamilyMeaning: 'a, b' } as any),
+    ).toBe('a, b');
+    expect(
+      service.extractWordFamilyMeaning({ 'Word Family Meaning': 'c, d' } as any),
+    ).toBe('c, d');
+  });
+
+  it('returns undefined when word_family_meaning is missing or empty', () => {
+    expect(service.extractWordFamilyMeaning({} as any)).toBeUndefined();
+    expect(
+      service.extractWordFamilyMeaning({ word_family_meaning: '   ' } as any),
+    ).toBeUndefined();
+  });
 });

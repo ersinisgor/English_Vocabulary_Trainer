@@ -22,6 +22,7 @@ export interface WordsQuery {
   search?: string;
   level?: string;
   partOfSpeech?: string;
+  tagIds?: string[];
 }
 
 export const wordsApi = {
@@ -39,5 +40,9 @@ export const wordsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/words/${id}`);
+  },
+
+  deleteAll: async (): Promise<void> => {
+    await apiClient.delete('/words');
   },
 };

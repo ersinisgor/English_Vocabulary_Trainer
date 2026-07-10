@@ -65,6 +65,11 @@ export class WordsController {
     return await this.wordsService.update(req.user.id, id, updateWordDTO);
   }
 
+  @Delete()
+  async removeAll(@Req() req: AuthenticatedRequest) {
+    return await this.wordsService.removeAll(req.user.id);
+  }
+
   @Delete(':id')
   @ApiDeleteWord()
   async remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {

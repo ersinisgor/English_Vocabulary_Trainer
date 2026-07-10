@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -15,6 +16,8 @@ import {
   LanguageSetting,
   PartOfSpeech,
   WordLevel,
+  WordOrder,
+  WrongAnswerSource,
 } from 'generated/prisma';
 
 export class StartSessionDTO {
@@ -37,6 +40,61 @@ export class StartSessionDTO {
   @Max(10)
   @Type(() => Number)
   numberOfOptions?: number;
+
+  // Presentation order of the selected questions (list order vs. shuffled).
+  @IsOptional()
+  @IsEnum(WordOrder)
+  wordOrder?: WordOrder;
+
+  // Ask ~1/5 of the session's words a second time.
+  @IsOptional()
+  @IsBoolean()
+  askMoreThanOnce?: boolean;
+
+  // Per-question countdown in seconds; 0 (or omitted) means untimed.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  @Type(() => Number)
+  timeLimitSeconds?: number;
+
+  // Flash Card: when false, cards are browsed without grading (defaults true).
+  @IsOptional()
+  @IsBoolean()
+  trackProgress?: boolean;
+
+  // Test (mixed) mode: the gradable types each question is drawn from.
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ExerciseType, { each: true })
+  testTypes?: ExerciseType[];
+
+  // ----- Wrong answers (distractor) source -----
+
+  @IsOptional()
+  @IsEnum(WrongAnswerSource)
+  wrongAnswerSource?: WrongAnswerSource;
+
+  // FOLDERS source: folders/lists to draw distractors from.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  wrongAnswerFolderIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  wrongAnswerWordListIds?: string[];
+
+  // DATE_RANGE source: words added within [from, to] (ISO date strings).
+  @IsOptional()
+  @IsDateString()
+  wrongAnswerFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  wrongAnswerTo?: string;
 
   // When provided, the preset supplies defaults; explicit DTO fields override it.
   @IsOptional()
@@ -83,6 +141,12 @@ export class StartSessionDTO {
   randomLanguage?: boolean;
 
   // ----- Filters -----
+
+  // Hand-picked words; restricts the pool to exactly these.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  wordIds?: string[];
 
   @IsOptional()
   @IsArray()

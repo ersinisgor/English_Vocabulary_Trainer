@@ -5,6 +5,8 @@ import { PartOfSpeech, WordLevel } from 'generated/prisma';
  * Produced by merging a preset (if any) with the request DTO.
  */
 export interface MeaningFilter {
+  // Explicit word selection; when set, no other filter can widen the pool.
+  wordIds?: string[];
   folderIds?: string[];
   wordListIds?: string[];
   levels?: WordLevel[];

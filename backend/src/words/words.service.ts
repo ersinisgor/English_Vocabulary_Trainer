@@ -50,11 +50,11 @@ export class WordsService {
     userId: string,
     query: FindWordsQueryDTO,
   ): Promise<WordPaginationResponse> {
-    const { page = 1, limit = 20, level, partOfSpeech, search } = query;
+    const { page = 1, limit = 20, level, partOfSpeech, search, tagIds } = query;
 
     const skip = (page - 1) * limit;
 
-    const where = {
+    const where: Prisma.WordWhereInput = {
       userId,
       ...(level && { level }),
       ...(partOfSpeech && { partOfSpeech }),
@@ -63,6 +63,11 @@ export class WordsService {
           contains: search.toLowerCase(),
           mode: Prisma.QueryMode.insensitive,
         },
+      }),
+      // Tags live on meanings, so a word matches when any of its meanings
+      // carries one of the selected tags.
+      ...(tagIds?.length && {
+        meanings: { some: { tags: { some: { tagId: { in: tagIds } } } } },
       }),
     };
 
@@ -151,6 +156,12 @@ export class WordsService {
 
     return this.prisma.word.delete({
       where: { id },
+    });
+  }
+
+  async removeAll(userId: string): Promise<{ count: number }> {
+    return this.prisma.word.deleteMany({
+      where: { userId },
     });
   }
 }

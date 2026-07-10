@@ -93,6 +93,7 @@ model Word {
   partOfSpeech   PartOfSpeech @map("part_of_speech")
   pronunciation  String?
   wordFamily     String?      @map("word_family")
+  wordFamilyMeaning String?   @map("word_family_meaning")
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -206,6 +207,8 @@ enum ExerciseType {
   TRUE_FALSE
   MATCHING
   FIND_IN_SENTENCE
+  // Mixed mode: each question is one of the gradable types chosen for the test.
+  TEST
 }
 
 enum LanguageSetting {
@@ -224,6 +227,7 @@ enum ContentFormat {
   NATIVE_SENTENCE
   NATIVE_SENTENCE_HIGHLIGHTED
   WORD_FAMILY
+  WORD_FAMILY_MEANING
 }
 
 enum SessionStatus {
@@ -240,6 +244,12 @@ model ExerciseSession {
   exerciseType    ExerciseType    @map("exercise_type")
   languageSetting LanguageSetting @map("language_setting")
   status          SessionStatus   @default(IN_PROGRESS)
+
+  // Per-question countdown in seconds; null/0 means untimed.
+  timeLimitSeconds Int?           @map("time_limit_seconds")
+
+  // Flash Card: when false, cards are browsed (prev/next) without grading.
+  trackProgress    Boolean        @default(true) @map("track_progress")
 
   totalQuestions  Int             @map("total_questions")
   answeredCount   Int             @default(0) @map("answered_count")
@@ -263,6 +273,9 @@ model SessionQuestion {
 
   meaningId     String          @map("meaning_id")
   meaning       WordMeaning     @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+
+  // Concrete type for Test (mixed) sessions; null falls back to the session type.
+  exerciseType  ExerciseType?   @map("exercise_type")
 
   questionOrder Int             @map("question_order")
   questionText  String          @map("question_text")
@@ -387,6 +400,20 @@ model WordListItem {
 // EXERCISE SETTINGS PRESET
 // ---------------------------------------------------------
 
+// Order in which selected questions are presented during a session.
+enum WordOrder {
+  LIST   // the order words were added (Word.createdAt, then meaningOrder)
+  RANDOM // shuffled
+}
+
+// Where the wrong answers (distractors) for an exercise are drawn from.
+enum WrongAnswerSource {
+  SAME       // the same pool as the questions (default)
+  ALL        // all of the user's words
+  FOLDERS    // a chosen folder/list combination
+  DATE_RANGE // words added within a date range
+}
+
 model ExerciseSettingsPreset {
   id     String @id @default(cuid())
   userId String @map("user_id")
@@ -396,8 +423,28 @@ model ExerciseSettingsPreset {
   exerciseType    ExerciseType    @map("exercise_type")
   languageSetting LanguageSetting @map("language_setting")
 
-  questionCount   Int @default(10) @map("question_count")
-  numberOfOptions Int @default(4)  @map("number_of_options")
+  questionCount   Int       @default(10)     @map("question_count")
+  numberOfOptions Int       @default(4)      @map("number_of_options")
+  wordOrder       WordOrder @default(RANDOM) @map("word_order")
+
+  // Per-question countdown in seconds; null/0 means untimed.
+  timeLimitSeconds Int? @map("time_limit_seconds")
+
+  // Flash Card: when false, cards are browsed (prev/next) without grading.
+  trackProgress Boolean @default(true) @map("track_progress")
+
+  // Test (mixed) mode: the gradable types each question is drawn from.
+  testTypes ExerciseType[] @map("test_types")
+
+  // When true, ~1/5 of the session's words are asked a second time.
+  askMoreThanOnce Boolean @default(false) @map("ask_more_than_once")
+
+  // Source of the wrong answers (distractors) and its parameters.
+  wrongAnswerSource      WrongAnswerSource @default(SAME) @map("wrong_answer_source")
+  wrongAnswerFolderIds   String[]          @map("wrong_answer_folder_ids")
+  wrongAnswerWordListIds String[]          @map("wrong_answer_word_list_ids")
+  wrongAnswerFrom        DateTime?         @map("wrong_answer_from")
+  wrongAnswerTo          DateTime?         @map("wrong_answer_to")
 
   questionFormat ContentFormat? @map("question_format")
   answerFormat   ContentFormat? @map("answer_format")

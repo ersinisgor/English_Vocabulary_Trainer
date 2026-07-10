@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ExcelParser } from './utils/excel-parser.util';
 import { ExcelData, WordSheetRow } from './types/excel-data.interface';
 import { PartOfSpeech, WordLevel } from 'generated/prisma';
-import { normalizeWord } from 'src/common/utils/word.utils';
+import { normalizeText, normalizeWord } from 'src/common/utils/word.utils';
 import { ImportError, ImportResult } from './types/import-result.type';
 
 @Injectable()
@@ -35,6 +35,7 @@ export class ImportService {
       level: WordLevel | null;
       pronunciation: string | undefined;
       wordFamily: string | undefined;
+      wordFamilyMeaning: string | undefined;
       userId: string;
     };
     type MeaningRecord = {
@@ -103,8 +104,9 @@ export class ImportService {
         word: normalizedWord,
         partOfSpeech: posEnum,
         level: levelEnum,
-        pronunciation: firstRow.pronunciation,
-        wordFamily: this.extractWordFamily(firstRow),
+        pronunciation: normalizeText(firstRow.pronunciation),
+        wordFamily: normalizeText(this.extractWordFamily(firstRow)),
+        wordFamilyMeaning: normalizeText(this.extractWordFamilyMeaning(firstRow)),
         userId,
       });
     }
@@ -160,15 +162,17 @@ export class ImportService {
       for (const row of rows) {
         const meaningId = randomUUID();
         meaningMap.set(`${wordNo}_${row.meaning_order}`, meaningId);
+        // Everything is stored lowercase for a consistent database.
+        const nativeMeanings = normalizeText(row.native_meanings || '') ?? '';
         meaningRecords.push({
           id: meaningId,
           wordId,
           meaningOrder: row.meaning_order,
-          englishDefinition: row.english_definition,
-          nativeMeanings: row.native_meanings || '',
+          englishDefinition: normalizeText(row.english_definition),
+          nativeMeanings,
         });
 
-        const parts = (row.native_meanings || '')
+        const parts = nativeMeanings
           .split('/')
           .map((p) => p.trim())
           .filter(Boolean);
@@ -195,8 +199,14 @@ export class ImportService {
         });
         continue;
       }
-      const english = this.parseExampleSentence(row.example_sentence || '');
-      const native = this.parseExampleSentence(row.translation || '');
+      // Lowercase the raw text first so the sentence, cloze template and the
+      // extracted answers all come out consistently lowercase.
+      const english = this.parseExampleSentence(
+        normalizeText(row.example_sentence || '') ?? '',
+      );
+      const native = this.parseExampleSentence(
+        normalizeText(row.translation || '') ?? '',
+      );
       exampleRecords.push({
         id: randomUUID(),
         meaningId,
@@ -220,8 +230,10 @@ export class ImportService {
 
     for (const row of excelData.tagSheet) {
       if (!row.name) continue;
-      const cleanName = this.cleanTagName(row.name);
-      if (!cleanName) continue;
+      // A single cell may hold several comma-separated tags, e.g.
+      // "intermediate-vocabularies, claude-day-1" → two distinct tags.
+      const cleanNames = this.parseTagNames(row.name);
+      if (cleanNames.length === 0) continue;
 
       const meaningId = meaningMap.get(`${row.word_no}_${row.meaning_order}`);
       if (!meaningId) {
@@ -234,8 +246,10 @@ export class ImportService {
         continue;
       }
 
-      allTagNames.add(cleanName);
-      tagRowsWithMeaning.push({ meaningId, tagName: cleanName });
+      for (const cleanName of cleanNames) {
+        allTagNames.add(cleanName);
+        tagRowsWithMeaning.push({ meaningId, tagName: cleanName });
+      }
     }
 
     const existingTags =
@@ -376,21 +390,28 @@ export class ImportService {
   }
 
   /**
-   * Reads the "word family" cell, tolerating common header spellings so the
-   * column works whether it is named `word_family`, `wordFamily`, `Word Family`,
-   * etc. Returns undefined when empty/missing.
+   * Splits a tag cell into its individual, cleaned tag names. A cell may list
+   * several tags separated by commas, e.g. "expressions, claude-day-1" →
+   * ["expressions", "claude-day-1"]. Empty fragments are dropped.
    */
-  extractWordFamily(row: WordSheetRow): string | undefined {
+  parseTagNames(raw: string): string[] {
+    return raw
+      .split(',')
+      .map((name) => this.cleanTagName(name))
+      .filter(Boolean);
+  }
+
+  /**
+   * Reads the first non-empty cell among the given header spellings. Excel
+   * headers are authored by hand, so the same column may arrive as
+   * `word_family`, `wordFamily`, `Word Family`, etc. Returns undefined when
+   * every candidate is empty/missing.
+   */
+  private readColumn(
+    row: WordSheetRow,
+    candidates: string[],
+  ): string | undefined {
     const raw = row as unknown as Record<string, unknown>;
-    const candidates = [
-      'word_family',
-      'wordFamily',
-      'WordFamily',
-      'WORD_FAMILY',
-      'Word Family',
-      'word family',
-      'Word family',
-    ];
     for (const key of candidates) {
       const value = raw[key];
       if (typeof value === 'string' && value.trim()) {
@@ -398,6 +419,37 @@ export class ImportService {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Reads the "word family" cell (column I), e.g. "notice, noticeable".
+   */
+  extractWordFamily(row: WordSheetRow): string | undefined {
+    return this.readColumn(row, [
+      'word_family',
+      'wordFamily',
+      'WordFamily',
+      'WORD_FAMILY',
+      'Word Family',
+      'word family',
+      'Word family',
+    ]);
+  }
+
+  /**
+   * Reads the "word family meaning" cell (column J) — the native-language
+   * glosses for the word-family members read by `extractWordFamily`.
+   */
+  extractWordFamilyMeaning(row: WordSheetRow): string | undefined {
+    return this.readColumn(row, [
+      'word_family_meaning',
+      'wordFamilyMeaning',
+      'WordFamilyMeaning',
+      'WORD_FAMILY_MEANING',
+      'Word Family Meaning',
+      'word family meaning',
+      'Word family meaning',
+    ]);
   }
 
   /**

@@ -40,3 +40,24 @@ body {
 .flip-card-back {
   transform: rotateY(180deg);
 }
+
+/* ── Matching game ── */
+/* Wrong pair: briefly scale up, then settle back to the original size. */
+@keyframes match-wrong {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.animate-match-wrong {
+  animation: match-wrong 0.42s ease-in-out;
+}
+
+/* Correct pair: pop and fade out before the slot becomes invisible. */
+@keyframes match-correct {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.4); opacity: 0; }
+}
+.animate-match-correct {
+  animation: match-correct 0.35s ease-in forwards;
+}
