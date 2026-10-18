@@ -5,7 +5,7 @@ export class AnswerQuestionDTO {
   @IsNotEmpty()
   questionId: string;
 
+  // Allowed to be empty: a timed-out question auto-submits a blank (wrong) answer.
   @IsString()
-  @IsNotEmpty()
   answer: string;
 }

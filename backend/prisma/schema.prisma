@@ -77,6 +77,9 @@ model User {
   refreshTokens    RefreshToken[]
   meaningStates    UserMeaningState[]
   exerciseSessions ExerciseSession[]
+  folders          Folder[]
+  wordLists        WordList[]
+  presets          ExerciseSettingsPreset[]
 }
 
 // ---------------------------------------------------------
@@ -89,6 +92,8 @@ model Word {
   level          WordLevel?
   partOfSpeech   PartOfSpeech @map("part_of_speech")
   pronunciation  String?
+  wordFamily     String?      @map("word_family")
+  wordFamilyMeaning String?   @map("word_family_meaning")
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -96,7 +101,8 @@ model Word {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  meanings WordMeaning[]
+  meanings  WordMeaning[]
+  listItems WordListItem[]
 
   @@unique([userId, word, partOfSpeech])
   @@index([userId])
@@ -157,6 +163,10 @@ model ExampleSentence {
   clozeTemplate String?
   answers       String[]
 
+  // Turkish translation cloze (mirror of clozeTemplate/answers for native side).
+  translationTemplate String?  @map("translation_template")
+  translationAnswers  String[] @map("translation_answers")
+
   @@index([meaningId])
 }
 
@@ -193,11 +203,31 @@ model WordMeaningTag {
 enum ExerciseType {
   FLASH_CARD
   MULTIPLE_CHOICE
+  WRITING
+  TRUE_FALSE
+  MATCHING
+  FIND_IN_SENTENCE
+  // Mixed mode: each question is one of the gradable types chosen for the test.
+  TEST
 }
 
 enum LanguageSetting {
   ENGLISH_NATIVE
   ENGLISH_ENGLISH
+}
+
+// Content facet used as the question prompt or the answer/option in an exercise.
+enum ContentFormat {
+  ENGLISH_WORD
+  ENGLISH_DEFINITION
+  ENGLISH_SENTENCE
+  ENGLISH_SENTENCE_CLOZE
+  ENGLISH_SENTENCE_HIGHLIGHTED
+  NATIVE_MEANING
+  NATIVE_SENTENCE
+  NATIVE_SENTENCE_HIGHLIGHTED
+  WORD_FAMILY
+  WORD_FAMILY_MEANING
 }
 
 enum SessionStatus {
@@ -214,6 +244,12 @@ model ExerciseSession {
   exerciseType    ExerciseType    @map("exercise_type")
   languageSetting LanguageSetting @map("language_setting")
   status          SessionStatus   @default(IN_PROGRESS)
+
+  // Per-question countdown in seconds; null/0 means untimed.
+  timeLimitSeconds Int?           @map("time_limit_seconds")
+
+  // Flash Card: when false, cards are browsed (prev/next) without grading.
+  trackProgress    Boolean        @default(true) @map("track_progress")
 
   totalQuestions  Int             @map("total_questions")
   answeredCount   Int             @default(0) @map("answered_count")
@@ -238,10 +274,22 @@ model SessionQuestion {
   meaningId     String          @map("meaning_id")
   meaning       WordMeaning     @relation(fields: [meaningId], references: [id], onDelete: Cascade)
 
+  // Concrete type for Test (mixed) sessions; null falls back to the session type.
+  exerciseType  ExerciseType?   @map("exercise_type")
+
   questionOrder Int             @map("question_order")
   questionText  String          @map("question_text")
   correctAnswer String          @map("correct_answer")
   options       String[]
+
+  prompt        String?
+
+  // Lowercase part-of-speech label (e.g. "phrasal verb"), shown separately.
+  partOfSpeech  String?         @map("part_of_speech")
+
+  // Multi-part faces for Flash Cards: arrays of { format, text }.
+  front         Json?
+  back          Json?
 
   isAnswered    Boolean         @default(false) @map("is_answered")
   isCorrect     Boolean?        @map("is_correct")
@@ -291,4 +339,133 @@ model UserMeaningState {
   @@index([userId, isStarred])
   @@index([userId, keepLearning])
   @@index([userId, nextReviewAt])
+}
+
+// ---------------------------------------------------------
+// FOLDER & WORD LIST
+// ---------------------------------------------------------
+
+model Folder {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  wordLists WordList[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("folders")
+}
+
+model WordList {
+  id       String  @id @default(cuid())
+  userId   String  @map("user_id")
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId String? @map("folder_id")
+  folder   Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  name String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items WordListItem[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([folderId])
+  @@map("word_lists")
+}
+
+model WordListItem {
+  wordListId String   @map("word_list_id")
+  wordList   WordList @relation(fields: [wordListId], references: [id], onDelete: Cascade)
+
+  wordId String @map("word_id")
+  word   Word   @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([wordListId, wordId])
+  @@index([wordId])
+  @@map("word_list_items")
+}
+
+// ---------------------------------------------------------
+// EXERCISE SETTINGS PRESET
+// ---------------------------------------------------------
+
+// Order in which selected questions are presented during a session.
+enum WordOrder {
+  LIST   // the order words were added (Word.createdAt, then meaningOrder)
+  RANDOM // shuffled
+}
+
+// Where the wrong answers (distractors) for an exercise are drawn from.
+enum WrongAnswerSource {
+  SAME       // the same pool as the questions (default)
+  ALL        // all of the user's words
+  FOLDERS    // a chosen folder/list combination
+  DATE_RANGE // words added within a date range
+}
+
+model ExerciseSettingsPreset {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String
+  exerciseType    ExerciseType    @map("exercise_type")
+  languageSetting LanguageSetting @map("language_setting")
+
+  questionCount   Int       @default(10)     @map("question_count")
+  numberOfOptions Int       @default(4)      @map("number_of_options")
+  wordOrder       WordOrder @default(RANDOM) @map("word_order")
+
+  // Per-question countdown in seconds; null/0 means untimed.
+  timeLimitSeconds Int? @map("time_limit_seconds")
+
+  // Flash Card: when false, cards are browsed (prev/next) without grading.
+  trackProgress Boolean @default(true) @map("track_progress")
+
+  // Test (mixed) mode: the gradable types each question is drawn from.
+  testTypes ExerciseType[] @map("test_types")
+
+  // When true, ~1/5 of the session's words are asked a second time.
+  askMoreThanOnce Boolean @default(false) @map("ask_more_than_once")
+
+  // Source of the wrong answers (distractors) and its parameters.
+  wrongAnswerSource      WrongAnswerSource @default(SAME) @map("wrong_answer_source")
+  wrongAnswerFolderIds   String[]          @map("wrong_answer_folder_ids")
+  wrongAnswerWordListIds String[]          @map("wrong_answer_word_list_ids")
+  wrongAnswerFrom        DateTime?         @map("wrong_answer_from")
+  wrongAnswerTo          DateTime?         @map("wrong_answer_to")
+
+  questionFormat ContentFormat? @map("question_format")
+  answerFormat   ContentFormat? @map("answer_format")
+  exampleOrder   Int?           @map("example_order")
+
+  // Multi-part Flash Card faces (ordered content formats per side).
+  frontFormats   ContentFormat[] @map("front_formats")
+  backFormats    ContentFormat[] @map("back_formats")
+
+  folderIds        String[]       @map("folder_ids")
+  wordListIds      String[]       @map("word_list_ids")
+  levels           WordLevel[]
+  partsOfSpeech    PartOfSpeech[] @map("parts_of_speech")
+  onlyStarred      Boolean        @default(false) @map("only_starred")
+  onlyKeepLearning Boolean        @default(false) @map("only_keep_learning")
+  excludeLearned   Boolean        @default(true)  @map("exclude_learned")
+  tagIds           String[]       @map("tag_ids")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("exercise_settings_presets")
 }

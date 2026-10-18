@@ -16,6 +16,12 @@ export class SessionResponseDTO {
   status: SessionStatus;
 
   @Expose()
+  timeLimitSeconds: number | null;
+
+  @Expose()
+  trackProgress: boolean;
+
+  @Expose()
   totalQuestions: number;
 
   @Expose()

@@ -5,6 +5,9 @@ export class SessionQuestionResponseDTO {
   id: string;
 
   @Expose()
+  exerciseType: string | null;
+
+  @Expose()
   questionOrder: number;
 
   @Expose()
@@ -15,6 +18,18 @@ export class SessionQuestionResponseDTO {
 
   @Expose()
   options: string[];
+
+  @Expose()
+  prompt: string | null;
+
+  @Expose()
+  partOfSpeech: string | null;
+
+  @Expose()
+  front: { format: string; text: string }[] | null;
+
+  @Expose()
+  back: { format: string; text: string }[] | null;
 
   @Expose()
   isAnswered: boolean;

@@ -13,6 +13,8 @@ export interface WordSheetRow {
   meaning_order: number;
   native_meanings?: string | undefined;
   english_definition?: string | undefined;
+  word_family?: string | undefined;
+  word_family_meaning?: string | undefined;
 }
 
 export interface ExampleSheetRow {

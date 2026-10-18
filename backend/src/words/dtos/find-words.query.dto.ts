@@ -1,6 +1,14 @@
 import { PartOfSpeech, WordLevel } from 'generated/prisma';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class FindWordsQueryDTO {
   @IsOptional()
@@ -27,4 +35,12 @@ export class FindWordsQueryDTO {
   @IsOptional()
   @IsString()
   search?: string;
+
+  // Filter words that have at least one meaning tagged with any of these tag IDs.
+  // Query arrays arrive as `tagIds[]=a&tagIds[]=b`; a single value is coerced to an array.
+  @IsOptional()
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @IsArray()
+  @IsString({ each: true })
+  tagIds?: string[];
 }
