@@ -77,11 +77,10 @@ export class AuthService {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, this.saltRounds);
-
+    // UsersService.create hashes the password, so pass it through as-is
     const userData: AuthCreateUserDTO = {
       email,
-      password: passwordHash,
+      password,
       username,
     };
 

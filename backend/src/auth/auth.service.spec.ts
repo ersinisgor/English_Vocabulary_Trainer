@@ -178,7 +178,6 @@ describe('AuthService', () => {
     it('should register a new user successfully', async () => {
       usersService.findUniqueByEmail.mockResolvedValue(null);
       usersService.create.mockResolvedValue(mockUser);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
       const result = await service.register(registerDTO);
 
@@ -186,10 +185,9 @@ describe('AuthService', () => {
       expect(
         jest.spyOn(usersService, 'findUniqueByEmail'),
       ).toHaveBeenCalledWith(registerDTO.email);
-      expect(bcrypt.hash).toHaveBeenCalledWith(registerDTO.password, 4);
       expect(jest.spyOn(usersService, 'create')).toHaveBeenCalledWith({
         email: registerDTO.email,
-        password: 'hashed-password',
+        password: registerDTO.password,
         username: registerDTO.username,
       });
     });
@@ -235,18 +233,15 @@ describe('AuthService', () => {
       );
     });
 
-    it('should hash password before saving', async () => {
+    it('should not hash the password itself (UsersService.create does)', async () => {
       usersService.findUniqueByEmail.mockResolvedValue(null);
       usersService.create.mockResolvedValue(mockUser);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('super-secure-hash');
 
       await service.register(registerDTO);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('Password123!', 4);
+      expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(jest.spyOn(usersService, 'create')).toHaveBeenCalledWith(
-        expect.objectContaining({
-          password: 'super-secure-hash',
-        }),
+        expect.objectContaining({ password: 'Password123!' }),
       );
     });
   });
