@@ -313,7 +313,7 @@ http://localhost:3001
   - Env: `NEXT_PUBLIC_API_URL=/api/v1`, `BACKEND_URL=https://<your-backend>.up.railway.app`
   - Next.js proxies `/api/v1/*` to the backend, so the refresh cookie stays first-party.
 
-**Live demo:** _add link here_
+**Live demo:** https://english-vocabulary-trainer-kappa.vercel.app
 
 ---
 
