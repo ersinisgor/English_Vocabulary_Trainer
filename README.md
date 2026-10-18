@@ -315,6 +315,8 @@ http://localhost:3001
 
 **Live demo:** https://english-vocabulary-trainer-kappa.vercel.app
 
+**Demo account:** `demo@example.com` / `test1234`
+
 ---
 
 ## 🗺 Development Roadmap
