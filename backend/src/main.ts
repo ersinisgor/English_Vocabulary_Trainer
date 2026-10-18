@@ -17,8 +17,17 @@ async function bootstrap() {
   // Set global API prefix for versioning
   app.setGlobalPrefix('api/v1');
 
+  const allowedOrigins = (process.env.FRONTEND_URL ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3000'],
+    origin: [
+      'http://localhost:3001',
+      'http://localhost:3000',
+      ...allowedOrigins,
+    ],
     credentials: true,
   });
 

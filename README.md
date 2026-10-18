@@ -304,6 +304,19 @@ http://localhost:3001
 
 ---
 
+## ☁️ Deployment (Vercel + Railway)
+
+- **Backend + PostgreSQL:** Railway (root directory `backend`, config in `backend/railway.json`)
+  - Env: `DATABASE_URL` (reference Railway Postgres), `NODE_ENV=production`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `BCRYPT_SALT_ROUNDS`, `ADMIN_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `FRONTEND_URL`
+  - Start command runs `prisma migrate deploy` automatically.
+- **Frontend:** Vercel (root directory `frontend`)
+  - Env: `NEXT_PUBLIC_API_URL=/api/v1`, `BACKEND_URL=https://<your-backend>.up.railway.app`
+  - Next.js proxies `/api/v1/*` to the backend, so the refresh cookie stays first-party.
+
+**Live demo:** _add link here_
+
+---
+
 ## 🗺 Development Roadmap
 
 - ~~Sprint 0 — Planning & Infrastructure~~ ✅  
